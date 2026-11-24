@@ -6,7 +6,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import type { LobbyMode } from "@/components/three/Lobby";
 import { Avatar, boom, Button, Card, Field, Hat, Lobby3D, Logo, SnowCSS, Toast } from "@/components/ui";
-import { adminKey, api, usePolling } from "@/lib/client";
+import { adminKey, api, recentGroups, usePolling } from "@/lib/client";
 import { budgetLabel } from "@/lib/format";
 import type { GroupMeta, PublicParticipant } from "@/lib/types";
 
@@ -69,6 +69,11 @@ function Admin() {
     else load(true);
   }, [key, load]);
   usePolling(() => load(), 8000);
+
+  const groupName = data?.group.name;
+  useEffect(() => {
+    if (groupName) recentGroups.add(gid, groupName);
+  }, [gid, groupName]);
 
   const call = async (path: string, method: string, body?: unknown) => {
     try {

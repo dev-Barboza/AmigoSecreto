@@ -25,6 +25,32 @@ export const adminKey = {
   set: (gid: string, k: string) => localStorage.setItem(aKey(gid), k),
 };
 
+/** Grupos que este aparelho já abriu, para achar de novo pela página inicial. */
+export type RecentGroup = { id: string; name: string; at: number };
+const rKey = "as:groups";
+export const recentGroups = {
+  list(): RecentGroup[] {
+    if (typeof window === "undefined") return [];
+    try {
+      return (JSON.parse(localStorage.getItem(rKey) ?? "[]") as RecentGroup[]).sort((a, b) => b.at - a.at);
+    } catch {
+      return [];
+    }
+  },
+  add(id: string, name: string) {
+    const rest = recentGroups.list().filter((g) => g.id !== id);
+    localStorage.setItem(rKey, JSON.stringify([{ id, name, at: Date.now() }, ...rest].slice(0, 10)));
+  },
+};
+
+/** Aceita o link inteiro do grupo ou só o código (ex.: "wbbzvpkh"). */
+export function groupIdFrom(input: string): string | null {
+  const t = input.trim();
+  const m = t.match(/\/g\/([A-Za-z0-9_-]+)/);
+  if (m) return m[1];
+  return /^[A-Za-z0-9_-]{4,30}$/.test(t) ? t : null;
+}
+
 export async function api<T = unknown>(
   path: string,
   opts: { method?: string; body?: unknown; gid?: string; admin?: string | null } = {},

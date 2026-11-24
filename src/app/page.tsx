@@ -23,9 +23,14 @@ export default function Home() {
       <SnowCSS count={25} />
       <nav className="relative z-10 mx-auto flex max-w-6xl items-center justify-between px-5 pt-6">
         <Logo />
-        <Link href="/criar" className="text-sm font-semibold text-muted hover:text-cream">
-          Criar grupo
-        </Link>
+        <div className="flex items-center gap-5">
+          <Link href="/criar" className="text-sm font-semibold text-muted hover:text-cream">
+            Criar grupo
+          </Link>
+          <Link href="/entrar" className="rounded-full border border-line px-4 py-1.5 text-sm font-semibold text-cream hover:border-gold">
+            Entrar
+          </Link>
+        </div>
       </nav>
 
       <section className="relative mx-auto grid max-w-6xl items-center gap-10 px-5 pt-10 sm:pt-16 lg:grid-cols-[1fr_1.1fr]">
@@ -50,6 +55,11 @@ export default function Home() {
             <Link href="/criar">
               <Button variant="red" className="px-7 py-3.5 text-lg">
                 Criar um grupo
+              </Button>
+            </Link>
+            <Link href="/entrar">
+              <Button variant="ghost" className="px-6 py-3.5 text-lg">
+                Já estou num grupo
               </Button>
             </Link>
             <Link href="/demo" className="text-sm font-semibold text-muted underline-offset-4 hover:text-cream hover:underline">

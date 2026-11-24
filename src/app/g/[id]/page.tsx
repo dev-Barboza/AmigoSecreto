@@ -8,7 +8,7 @@ import { Chat } from "@/components/group/Chat";
 import { ColorPicker, JoinFlow, LoginFlow, PhotoPicker } from "@/components/group/Join";
 import { WishlistEditor, WishlistView } from "@/components/group/Wishlist";
 import { Avatar, boom, Button, Card, Countdown, Field, Hat, Lobby3D, Logo, Reveal3D, SnowCSS, Tabs, Toast } from "@/components/ui";
-import { adminKey, api, session, usePolling } from "@/lib/client";
+import { adminKey, api, recentGroups, session, usePolling } from "@/lib/client";
 import { budgetLabel, dateLabel } from "@/lib/format";
 import type { MeResponse, PublicGroup, PublicParticipant } from "@/lib/types";
 
@@ -62,6 +62,11 @@ export default function GroupPage() {
     setIsAdmin(!!adminKey.get(gid));
   }, [load, gid]);
   usePolling(() => load(), 8000);
+
+  const groupName = data?.group.name;
+  useEffect(() => {
+    if (groupName) recentGroups.add(gid, groupName);
+  }, [gid, groupName]);
 
   const hasMatch = !!me?.match;
   useEffect(() => {
