@@ -1,0 +1,91 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: var(--font-fraunces), Georgia, serif;
+  --font-sans: var(--font-figtree), ui-sans-serif, system-ui, sans-serif;
+
+  --color-ink: #0f1b2d;
+  --color-ink-2: #172538;
+  --color-ink-3: #1f3048;
+  --color-line: #2c3e58;
+  --color-cream: #f4ecdf;
+  --color-muted: #9fadc0;
+  --color-berry: #d94a3d;
+  --color-berry-dark: #a8332a;
+  --color-gold: #f0b54a;
+  --color-gold-dark: #c18a25;
+  --color-pine: #3e8e5e;
+
+  --animate-wiggle: wiggle 1.2s ease-in-out infinite;
+  @keyframes wiggle {
+    0%, 100% { transform: rotate(-6deg); }
+    50% { transform: rotate(6deg); }
+  }
+}
+
+html { color-scheme: dark; }
+body {
+  background-color: var(--color-ink);
+  background-image: radial-gradient(900px 500px at 85% -10%, rgb(217 74 61 / 0.16), transparent 70%);
+  min-height: 100dvh;
+  color: var(--color-cream);
+}
+
+::selection { background: var(--color-gold); color: var(--color-ink); }
+
+.panel {
+  background: var(--color-ink-2);
+  border: 1px solid var(--color-line);
+  border-radius: 20px;
+}
+
+.input {
+  width: 100%;
+  border-radius: 12px;
+  background: var(--color-ink);
+  border: 1.5px solid var(--color-line);
+  padding: 0.75rem 0.9rem;
+  outline: none;
+  transition: border-color .15s;
+}
+.input:focus { border-color: var(--color-gold); }
+.input::placeholder { color: rgb(159 173 192 / 0.6); }
+
+/* botão "de jogo": tem uma base embaixo e afunda ao clicar */
+.btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  border-radius: 14px;
+  padding: .7rem 1.25rem;
+  font-weight: 700;
+  transition: transform .08s, box-shadow .08s, filter .15s;
+  box-shadow: 0 4px 0 var(--btn-base);
+}
+.btn:hover:not(:disabled) { filter: brightness(1.06); }
+.btn:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 var(--btn-base); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn-red { background: var(--color-berry); color: #fff; --btn-base: var(--color-berry-dark); }
+.btn-gold { background: var(--color-gold); color: #3a2706; --btn-base: var(--color-gold-dark); }
+.btn-ghost { background: var(--color-ink-3); color: var(--color-cream); --btn-base: #0a1320; }
+.btn-danger { background: transparent; color: #f19a90; border: 1.5px solid #6b2a25; box-shadow: none; }
+
+.snowflake {
+  position: fixed;
+  top: -10px;
+  width: var(--s);
+  height: var(--s);
+  border-radius: 50%;
+  background: #fff;
+  pointer-events: none;
+  animation: fall linear infinite;
+  z-index: 0;
+}
+@keyframes fall {
+  to { transform: translate3d(var(--drift, 30px), 110vh, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .snowflake { display: none; }
+}
