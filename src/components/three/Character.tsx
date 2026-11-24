@@ -5,6 +5,8 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 
+export type Outfit = "noel" | "ministro";
+
 export type CharMode = "idle" | "run" | "dance" | "wave";
 
 export type CharacterProps = {
@@ -24,9 +26,11 @@ export type CharacterProps = {
   showLabel?: boolean;
   highlight?: boolean;
   onSelect?: () => void;
+  outfit?: Outfit;
 };
 
 const SKIN = "#ffdcc2";
+const TOGA = "#151515";
 
 function easeOutBounce(x: number) {
   const n1 = 7.5625, d1 = 2.75;
@@ -106,8 +110,9 @@ function useFaceTexture(photo: string | undefined, color: string) {
 
 export function Character({
   name, photo, color, position, angle = 0, radius = 0, spin, mode = "idle", drop = false,
-  scale = 1, showLabel = true, highlight = false, onSelect,
+  scale = 1, showLabel = true, highlight = false, onSelect, outfit = "noel",
 }: CharacterProps) {
+  const judge = outfit === "ministro";
   const root = useRef<THREE.Group>(null);
   const body = useRef<THREE.Group>(null);
   const armL = useRef<THREE.Group>(null);
@@ -226,29 +231,60 @@ export function Character({
         {/* corpo */}
         <mesh position={[0, 0.6, 0]} castShadow>
           <capsuleGeometry args={[0.33, 0.32, 8, 24]} />
-          <meshStandardMaterial color={shirt} roughness={0.45} />
+          <meshStandardMaterial color={judge ? TOGA : shirt} roughness={judge ? 0.55 : 0.45} />
         </mesh>
-        {/* barra branca de pelúcia */}
-        <mesh position={[0, 0.3, 0]} rotation={[Math.PI / 2, 0, 0]}>
-          <torusGeometry args={[0.3, 0.06, 12, 32]} />
-          <meshStandardMaterial color="#ffffff" roughness={1} />
-        </mesh>
-        {/* cinto */}
-        <mesh position={[0, 0.55, 0]}>
-          <cylinderGeometry args={[0.335, 0.335, 0.08, 32]} />
-          <meshStandardMaterial color="#1f1f1f" roughness={0.4} />
-        </mesh>
-        <mesh position={[0, 0.55, 0.335]}>
-          <boxGeometry args={[0.14, 0.11, 0.03]} />
-          <meshStandardMaterial color="#facc15" metalness={0.8} roughness={0.25} />
-        </mesh>
-        {/* botões */}
-        {[0.72, 0.85].map((y) => (
-          <mesh key={y} position={[0, y, 0.315]}>
-            <sphereGeometry args={[0.035, 12, 12]} />
-            <meshStandardMaterial color="#fff" />
-          </mesh>
-        ))}
+        {judge ? (
+          <>
+            {/* barra da toga, abrindo embaixo */}
+            <mesh position={[0, 0.3, 0]} castShadow>
+              <cylinderGeometry args={[0.34, 0.45, 0.38, 32]} />
+              <meshStandardMaterial color={TOGA} roughness={0.55} />
+            </mesh>
+            {/* camisa branca + gravata na cor da pessoa */}
+            <mesh position={[0, 0.83, 0.3]} rotation={[-0.25, 0, 0]}>
+              <boxGeometry args={[0.2, 0.3, 0.02]} />
+              <meshStandardMaterial color="#ffffff" roughness={0.6} />
+            </mesh>
+            <mesh position={[0, 0.8, 0.316]} rotation={[-0.25, 0, 0]}>
+              <boxGeometry args={[0.07, 0.26, 0.02]} />
+              <meshStandardMaterial color={shirt} roughness={0.4} />
+            </mesh>
+            {/* gola branca da capa */}
+            <mesh position={[0, 0.97, 0]} rotation={[Math.PI / 2, 0, 0]}>
+              <torusGeometry args={[0.22, 0.065, 12, 32]} />
+              <meshStandardMaterial color="#ffffff" roughness={0.8} />
+            </mesh>
+            {/* faixa dourada */}
+            <mesh position={[0, 0.48, 0]}>
+              <cylinderGeometry args={[0.36, 0.37, 0.04, 32]} />
+              <meshStandardMaterial color="#d4a537" metalness={0.7} roughness={0.3} />
+            </mesh>
+          </>
+        ) : (
+          <>
+            {/* barra branca de pelúcia */}
+            <mesh position={[0, 0.3, 0]} rotation={[Math.PI / 2, 0, 0]}>
+              <torusGeometry args={[0.3, 0.06, 12, 32]} />
+              <meshStandardMaterial color="#ffffff" roughness={1} />
+            </mesh>
+            {/* cinto */}
+            <mesh position={[0, 0.55, 0]}>
+              <cylinderGeometry args={[0.335, 0.335, 0.08, 32]} />
+              <meshStandardMaterial color="#1f1f1f" roughness={0.4} />
+            </mesh>
+            <mesh position={[0, 0.55, 0.335]}>
+              <boxGeometry args={[0.14, 0.11, 0.03]} />
+              <meshStandardMaterial color="#facc15" metalness={0.8} roughness={0.25} />
+            </mesh>
+            {/* botões */}
+            {[0.72, 0.85].map((y) => (
+              <mesh key={y} position={[0, y, 0.315]}>
+                <sphereGeometry args={[0.035, 12, 12]} />
+                <meshStandardMaterial color="#fff" />
+              </mesh>
+            ))}
+          </>
+        )}
         {/* braços */}
         {([
           [armL, -0.36],
@@ -256,13 +292,26 @@ export function Character({
         ] as const).map(([ref, x]) => (
           <group key={x} ref={ref} position={[x, 0.85, 0]}>
             <mesh position={[0, -0.2, 0]} castShadow>
-              <capsuleGeometry args={[0.09, 0.22, 6, 12]} />
-              <meshStandardMaterial color={shirt} roughness={0.45} />
+              <capsuleGeometry args={[judge ? 0.1 : 0.09, 0.22, 6, 12]} />
+              <meshStandardMaterial color={judge ? TOGA : shirt} roughness={0.45} />
             </mesh>
             <mesh position={[0, -0.4, 0]}>
-              <sphereGeometry args={[0.1, 16, 12]} />
-              <meshStandardMaterial color="#ffffff" roughness={1} />
+              <sphereGeometry args={[judge ? 0.085 : 0.1, 16, 12]} />
+              <meshStandardMaterial color={judge ? SKIN : "#ffffff"} roughness={judge ? 0.7 : 1} />
             </mesh>
+            {/* martelo na mão direita */}
+            {judge && x > 0 && (
+              <group position={[0, -0.47, 0.08]}>
+                <mesh rotation={[Math.PI / 2, 0, 0]}>
+                  <cylinderGeometry args={[0.022, 0.022, 0.34, 8]} />
+                  <meshStandardMaterial color="#7a5236" roughness={0.5} />
+                </mesh>
+                <mesh position={[0, 0, 0.18]} rotation={[0, 0, Math.PI / 2]} castShadow>
+                  <cylinderGeometry args={[0.065, 0.065, 0.22, 16]} />
+                  <meshStandardMaterial color="#5b3a24" roughness={0.45} />
+                </mesh>
+              </group>
+            )}
           </group>
         ))}
         {/* cabeça */}
@@ -277,7 +326,14 @@ export function Character({
               <meshStandardMaterial map={face} roughness={0.6} />
             </mesh>
           )}
-          {/* gorro */}
+          {judge ? (
+            /* cabelo grisalho, puxado para trás para não cobrir a foto */
+            <mesh rotation={[-0.55, 0, 0]}>
+              <sphereGeometry args={[0.44, 32, 16, 0, Math.PI * 2, 0, Math.PI * 0.36]} />
+              <meshStandardMaterial color="#6b6460" roughness={0.9} />
+            </mesh>
+          ) : (
+          /* gorro */
           <group position={[0, 0.27, -0.02]} rotation={[-0.15, 0, -0.18]}>
             <mesh position={[0, 0.3, 0]} castShadow>
               <coneGeometry args={[0.36, 0.62, 32]} />
@@ -292,6 +348,7 @@ export function Character({
               <meshStandardMaterial color="#ffffff" roughness={1} />
             </mesh>
           </group>
+          )}
         </group>
         {showLabel && name && (
           <Html position={[0, 2.35, 0]} center distanceFactor={9} zIndexRange={[20, 0]} style={{ pointerEvents: "none" }}>
@@ -299,7 +356,7 @@ export function Character({
               className="whitespace-nowrap rounded-md px-2.5 py-0.5 text-sm font-bold text-white"
               style={{ background: color, boxShadow: "0 2px 0 rgba(0,0,0,.35)" }}
             >
-              {name}
+              {judge ? `Min. ${name}` : name}
             </div>
           </Html>
         )}

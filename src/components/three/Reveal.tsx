@@ -4,8 +4,10 @@ import { Sparkles } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { useRef } from "react";
 import * as THREE from "three";
+import type { Theme } from "@/lib/theme";
 import type { PublicParticipant } from "@/lib/types";
 import { Character } from "./Character";
+import { CourtFloor, CourtSky, Papers } from "./Court";
 import { Lights, Sky, Snow } from "./World";
 
 type Props = {
@@ -14,11 +16,19 @@ type Props = {
   opened: boolean;
   onTap: () => void;
   className?: string;
+  theme?: Theme;
 };
 
 const BOX = 1.6;
 
-function GiftBox({ taps, opened, onTap }: { taps: number; opened: boolean; onTap: () => void }) {
+/** Natal: presente vermelho com laço. Tribunal: caixa de processo lacrada, de papelão com fita vermelha. */
+const BOX_COLORS = {
+  natal: { side: "#e11d48", bottom: "#be123c", lid: "#f43f5e", ribbon: "#fde047" },
+  tribunal: { side: "#a47148", bottom: "#8a5a35", lid: "#b8835a", ribbon: "#b91c1c" },
+};
+
+function GiftBox({ taps, opened, onTap, theme }: { taps: number; opened: boolean; onTap: () => void; theme: Theme }) {
+  const col = BOX_COLORS[theme];
   const box = useRef<THREE.Group>(null);
   const lid = useRef<THREE.Group>(null);
   const shakeAt = useRef(-99);
@@ -54,7 +64,7 @@ function GiftBox({ taps, opened, onTap }: { taps: number; opened: boolean; onTap
     }
   });
 
-  const ribbon = "#fde047";
+  const ribbon = col.ribbon;
   return (
     <group
       ref={box}
@@ -75,7 +85,7 @@ function GiftBox({ taps, opened, onTap }: { taps: number; opened: boolean; onTap
         <group key={i} position={[x, y, z]} rotation={[0, r, 0]}>
           <mesh castShadow receiveShadow>
             <boxGeometry args={[BOX, BOX, 0.06]} />
-            <meshStandardMaterial color="#e11d48" roughness={0.35} />
+            <meshStandardMaterial color={col.side} roughness={0.35} />
           </mesh>
           <mesh position={[0, 0, 0.035]}>
             <boxGeometry args={[0.3, BOX, 0.02]} />
@@ -85,13 +95,13 @@ function GiftBox({ taps, opened, onTap }: { taps: number; opened: boolean; onTap
       ))}
       <mesh position={[0, 0.03, 0]} receiveShadow>
         <boxGeometry args={[BOX, 0.06, BOX]} />
-        <meshStandardMaterial color="#be123c" />
+        <meshStandardMaterial color={col.bottom} />
       </mesh>
       {/* tampa */}
       <group ref={lid} position={[0, BOX + 0.12, 0]}>
         <mesh castShadow>
           <boxGeometry args={[BOX + 0.14, 0.26, BOX + 0.14]} />
-          <meshStandardMaterial color="#f43f5e" roughness={0.3} />
+          <meshStandardMaterial color={col.lid} roughness={0.3} />
         </mesh>
         <mesh>
           <boxGeometry args={[0.32, 0.28, BOX + 0.16]} />
@@ -117,7 +127,7 @@ function GiftBox({ taps, opened, onTap }: { taps: number; opened: boolean; onTap
   );
 }
 
-function RisingCharacter({ person, opened }: { person: PublicParticipant; opened: boolean }) {
+function RisingCharacter({ person, opened, theme }: { person: PublicParticipant; opened: boolean; theme: Theme }) {
   const g = useRef<THREE.Group>(null);
   const at = useRef<number | null>(null);
   useFrame(({ clock }) => {
@@ -135,7 +145,7 @@ function RisingCharacter({ person, opened }: { person: PublicParticipant; opened
   });
   return (
     <group ref={g}>
-      <Character photo={person.photo} color={person.color} position={[0, 0, 0]} mode="dance" showLabel={false} />
+      <Character photo={person.photo} color={person.color} position={[0, 0, 0]} mode="dance" showLabel={false} outfit={theme === "tribunal" ? "ministro" : "noel"} />
     </group>
   );
 }
@@ -153,19 +163,31 @@ function LightBeam({ opened }: { opened: boolean }) {
   );
 }
 
-export default function Reveal({ person, taps, opened, onTap, className }: Props) {
+export default function Reveal({ person, taps, opened, onTap, className, theme = "natal" }: Props) {
+  const court = theme === "tribunal";
   return (
     <div className={className}>
       <Canvas shadows camera={{ position: [0, 3.4, 9.5], fov: 45 }} dpr={[1, 2]} onCreated={({ camera }) => camera.lookAt(0, 2.1, 0)} onPointerMissed={() => onTap()}>
-        <Sky />
-        <Lights />
-        <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-          <circleGeometry args={[6, 64]} />
-          <meshStandardMaterial color="#eef4ff" roughness={1} />
-        </mesh>
-        <Snow count={300} area={12} />
-        <GiftBox taps={taps} opened={opened} onTap={onTap} />
-        <RisingCharacter person={person} opened={opened} />
+        {court ? (
+          <>
+            <CourtSky />
+            <Lights />
+            <CourtFloor radius={6} />
+            <Papers count={50} area={12} />
+          </>
+        ) : (
+          <>
+            <Sky />
+            <Lights />
+            <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+              <circleGeometry args={[6, 64]} />
+              <meshStandardMaterial color="#eef4ff" roughness={1} />
+            </mesh>
+            <Snow count={300} area={12} />
+          </>
+        )}
+        <GiftBox taps={taps} opened={opened} onTap={onTap} theme={theme} />
+        <RisingCharacter person={person} opened={opened} theme={theme} />
         <LightBeam opened={opened} />
         {opened && <Sparkles count={120} scale={[5, 6, 5]} position={[0, 3, 0]} size={6} speed={1.2} color="#fde047" />}
       </Canvas>

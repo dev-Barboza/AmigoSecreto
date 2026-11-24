@@ -5,7 +5,9 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import type { LobbyMode } from "@/components/three/Lobby";
+import { ThemePicker } from "@/components/group/ThemePicker";
 import { Avatar, boom, Button, Card, Field, Hat, Lobby3D, Logo, SnowCSS, Toast } from "@/components/ui";
+import { parseTheme } from "@/lib/theme";
 import { adminKey, api, recentGroups, usePolling } from "@/lib/client";
 import { budgetLabel } from "@/lib/format";
 import type { GroupMeta, PublicParticipant } from "@/lib/types";
@@ -176,7 +178,7 @@ function Admin() {
 
       <section className="relative mx-auto mt-6 max-w-6xl px-3 sm:px-5">
         <div className="relative h-[50vh] min-h-[340px] overflow-hidden rounded-[22px] border border-line">
-          <Lobby3D people={participants} mode={mode} className="h-full w-full" />
+          <Lobby3D people={participants} mode={mode} className="h-full w-full" theme={group.theme} />
           <AnimatePresence>
             {drawing && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="pointer-events-none absolute inset-0 grid place-items-center">
@@ -351,6 +353,7 @@ function Settings({ group, onSave }: { group: GroupMeta; onSave: (b: Record<stri
     eventDate: toLocalInput(group.eventDate),
     eventPlace: group.eventPlace ?? "",
     description: group.description ?? "",
+    theme: parseTheme(group.theme),
   });
   const [saving, setSaving] = useState(false);
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setF({ ...f, [k]: e.target.value });
@@ -361,6 +364,10 @@ function Settings({ group, onSave }: { group: GroupMeta; onSave: (b: Record<stri
         <Field label="Nome">
           <input className="input" value={f.name} onChange={set("name")} />
         </Field>
+        <div className="space-y-1.5">
+          <span className="text-sm font-semibold text-cream/90">Cenário</span>
+          <ThemePicker compact value={f.theme} onChange={(theme) => setF({ ...f, theme })} />
+        </div>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Mínimo (R$)">
             <input className="input" inputMode="decimal" value={f.budgetMin} onChange={set("budgetMin")} />

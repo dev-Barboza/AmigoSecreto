@@ -1,4 +1,4 @@
-import { getMeta, getPeople, getRevs, groupPublic, handle, toPublic } from "@/lib/db";
+import { ensureIndexed, getMeta, getPeople, getRevs, groupPublic, handle, toPublic } from "@/lib/db";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -9,5 +9,6 @@ export const GET = handle(async (req: Request, { params }: Ctx) => {
   const revs = await getRevs(id);
   if (q.get("rev") === String(revs.rev)) return { ...revs, unchanged: true };
   const [meta, people] = await Promise.all([getMeta(id), getPeople(id)]);
+  await ensureIndexed(id, people);
   return { ...revs, group: groupPublic(meta), participants: people.map(toPublic) };
 });

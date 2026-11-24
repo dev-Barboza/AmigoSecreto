@@ -1,4 +1,4 @@
-import { createHash, timingSafeEqual } from "crypto";
+import { createHash, randomBytes, scryptSync, timingSafeEqual } from "crypto";
 import { customAlphabet, nanoid } from "nanoid";
 import { NextResponse } from "next/server";
 import { kv } from "./kv";
@@ -14,6 +14,9 @@ const K = {
   rate: (g: string, what: string) => `g:${g}:rate:${what}`,
   rev: (g: string) => `g:${g}:rev`,
   chatRev: (g: string) => `g:${g}:chatrev`,
+  indexed: (g: string) => `g:${g}:indexed`,
+  /** nome normalizado -> { grupo: participante }, para entrar só com nome e senha */
+  byName: (n: string) => `n:${n}`,
 };
 
 export class HttpError extends Error {
@@ -82,19 +85,48 @@ export function cleanWishlist(v: unknown): WishItem[] {
   });
 }
 
-// ---------- PIN ----------
-export function hashPin(gid: string, pin: string) {
+// ---------- nome e senha ----------
+/** "  José  da Silva " e "jose da silva" viram a mesma coisa. */
+export function normName(name: string) {
+  return name.normalize("NFD").replace(/\p{Diacritic}/gu, "").trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+/** Formato antigo (PIN): sha256 com segredo. Continua aceito para quem entrou antes. */
+function legacyHash(gid: string, pin: string) {
   return createHash("sha256")
     .update(`${process.env.PIN_SECRET ?? "amigo-secreto"}:${gid}:${pin}`)
     .digest("hex");
 }
-export function validPin(pin: unknown) {
-  return typeof pin === "string" && /^\d{4,6}$/.test(pin);
+export function hashPassword(password: string) {
+  const salt = randomBytes(16).toString("hex");
+  return `s1$${salt}$${scryptSync(password, salt, 32).toString("hex")}`;
+}
+export function checkPassword(gid: string, password: string, stored: string) {
+  if (stored.startsWith("s1$")) {
+    const [, salt, hash] = stored.split("$");
+    return safeEq(scryptSync(password, salt, 32).toString("hex"), hash);
+  }
+  return safeEq(legacyHash(gid, password), stored);
+}
+export function validPassword(pw: unknown): pw is string {
+  return typeof pw === "string" && pw.length >= 4 && pw.length <= 64;
 }
 function safeEq(a: string, b: string) {
   const ab = Buffer.from(a);
   const bb = Buffer.from(b);
   return ab.length === bb.length && timingSafeEqual(ab, bb);
+}
+
+/** Todos os lugares (grupo + participante) onde existe alguém com esse nome. */
+export async function findByName(name: string) {
+  const all = await kv().hgetall<string>(K.byName(normName(name)));
+  return Object.entries(all).map(([gid, pid]) => ({ gid, pid }));
+}
+/** Indexa quem entrou antes do índice existir (roda uma vez por grupo). */
+export async function ensureIndexed(gid: string, people: Participant[]) {
+  if (await kv().get(K.indexed(gid))) return;
+  for (const p of people) await kv().hset(K.byName(normName(p.name)), gid, p.id);
+  await kv().set(K.indexed(gid), 1);
 }
 
 export async function rateLimit(gid: string, what: string, max: number, ttl = 600) {
@@ -123,9 +155,12 @@ export async function getPeople(gid: string) {
 export const getPerson = (gid: string, pid: string) => kv().hget<Participant>(K.people(gid), pid);
 export async function savePerson(gid: string, p: Participant) {
   await kv().hset(K.people(gid), p.id, p);
+  await kv().hset(K.byName(normName(p.name)), gid, p.id);
   await bumpRev(gid);
 }
 export async function deletePerson(gid: string, pid: string) {
+  const p = await getPerson(gid, pid);
+  if (p) await kv().hdel(K.byName(normName(p.name)), gid);
   await kv().hdel(K.people(gid), pid);
   await bumpRev(gid);
 }

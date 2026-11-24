@@ -5,7 +5,9 @@ import { useRef, useState } from "react";
 import { Chat } from "@/components/group/Chat";
 import { ColorPicker, PhotoPicker } from "@/components/group/Join";
 import { WishlistEditor, WishlistView } from "@/components/group/Wishlist";
+import { ThemePicker } from "@/components/group/ThemePicker";
 import { Avatar, boom, Button, Card, Field, Lobby3D, Logo, Reveal3D, Tabs } from "@/components/ui";
+import type { Theme } from "@/lib/theme";
 import type { LobbyMode } from "@/components/three/Lobby";
 import { budgetLabel, BODY_COLORS } from "@/lib/format";
 import type { ChatMessage, PublicGroup, PublicParticipant, WishItem } from "@/lib/types";
@@ -112,6 +114,7 @@ export default function Demo() {
   const [revealed, setRevealed] = useState(false);
   const [reveal, setReveal] = useState<{ taps: number; opened: boolean; done: boolean } | null>(null);
   const [round, setRound] = useState(0);
+  const [theme, setTheme] = useState<Theme>("natal");
   const [tab, setTab] = useState<Tab>("char");
   const [selected, setSelected] = useState<PublicParticipant | null>(null);
   const [chat, setChat] = useState<ChatMessage[]>([]);
@@ -199,11 +202,14 @@ export default function Demo() {
         </div>
         <h1 className="mt-6 font-display text-4xl font-semibold tracking-tight">Grupo de teste</h1>
         <p className="mt-1 text-muted">{budgetLabel(GROUP.budgetMin, GROUP.budgetMax)}  ·  nada aqui é salvo</p>
+        <div className="mt-4 max-w-sm">
+          <ThemePicker compact value={theme} onChange={setTheme} />
+        </div>
       </header>
 
       <section className="mx-auto mt-6 max-w-6xl px-3 sm:px-5">
         <div className="relative h-[52vh] min-h-[360px] overflow-hidden rounded-[22px] border border-line">
-          <Lobby3D people={people} mode={mode} highlightId={ME_ID} onSelect={setSelected} className="h-full w-full" />
+          <Lobby3D people={people} mode={mode} highlightId={ME_ID} onSelect={setSelected} className="h-full w-full" theme={theme} />
           <AnimatePresence>
             {mode === "shuffle" && (
               <motion.p
@@ -369,7 +375,7 @@ export default function Demo() {
       <AnimatePresence>
         {reveal && match && (
           <motion.div className="fixed inset-0 z-50 bg-ink" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <Reveal3D key={round} person={match} taps={reveal.taps} opened={reveal.opened} onTap={tap} className="absolute inset-0" />
+            <Reveal3D key={round} person={match} taps={reveal.taps} opened={reveal.opened} onTap={tap} className="absolute inset-0" theme={theme} />
             <div className="pointer-events-none absolute inset-x-0 top-10 px-4 text-center">
               <AnimatePresence mode="wait">
                 {!reveal.opened ? (

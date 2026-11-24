@@ -2,9 +2,10 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { useRef, useState } from "react";
-import { Avatar, boom, Button, Card, Field, Preview3D } from "@/components/ui";
+import { boom, Button, Card, Field, Preview3D } from "@/components/ui";
 import { api, resizePhoto, session } from "@/lib/client";
 import { BODY_COLORS } from "@/lib/format";
+import type { Theme } from "@/lib/theme";
 import type { PublicParticipant } from "@/lib/types";
 
 export function PhotoPicker({ value, onChange, color }: { value?: string; onChange: (v: string | undefined) => void; color: string }) {
@@ -79,34 +80,99 @@ export function ColorPicker({ value, onChange }: { value: string; onChange: (c: 
   );
 }
 
-function PinInput({ value, onChange, autoFocus }: { value: string; onChange: (v: string) => void; autoFocus?: boolean }) {
+export function PasswordInput({
+  value,
+  onChange,
+  autoFocus,
+  autoComplete = "current-password",
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  autoFocus?: boolean;
+  autoComplete?: string;
+}) {
+  const [show, setShow] = useState(false);
   return (
-    <input
-      className="input text-center font-display text-3xl tracking-[0.5em]"
-      inputMode="numeric"
-      autoComplete="off"
-      maxLength={6}
-      autoFocus={autoFocus}
-      placeholder="····"
-      value={value}
-      onChange={(e) => onChange(e.target.value.replace(/\D/g, "").slice(0, 6))}
-    />
+    <div className="relative">
+      <input
+        className="input w-full pr-20"
+        type={show ? "text" : "password"}
+        autoComplete={autoComplete}
+        maxLength={64}
+        autoFocus={autoFocus}
+        placeholder="Mínimo 4 caracteres"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+      <button
+        type="button"
+        onClick={() => setShow(!show)}
+        className="absolute inset-y-0 right-3 text-sm font-semibold text-muted hover:text-cream"
+      >
+        {show ? "Esconder" : "Mostrar"}
+      </button>
+    </div>
   );
 }
 
-/** Monta o boneco: nome e foto, cor, PIN. O boneco 3D ao lado atualiza na hora. */
-export function JoinFlow({ gid, onJoined, onError }: { gid: string; onJoined: () => void; onError: (m: string) => void }) {
+/** Formulário de nome + senha, usado dentro do grupo e na página /entrar. */
+export function NamePasswordForm({
+  onSubmit,
+  submitLabel = "Entrar",
+}: {
+  onSubmit: (name: string, password: string) => Promise<void>;
+  submitLabel?: string;
+}) {
+  const [name, setName] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  return (
+    <form
+      className="space-y-4"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        try {
+          await onSubmit(name, password);
+        } finally {
+          setLoading(false);
+        }
+      }}
+    >
+      <Field label="Seu nome" hint="O mesmo nome que você usou quando entrou no grupo.">
+        <input
+          className="input w-full"
+          autoComplete="username"
+          autoFocus
+          maxLength={40}
+          placeholder="Como você se cadastrou"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+      </Field>
+      <Field label="Sua senha">
+        <PasswordInput value={password} onChange={setPassword} />
+      </Field>
+      <Button type="submit" className="w-full" disabled={!name.trim() || password.length < 4} loading={loading}>
+        {submitLabel}
+      </Button>
+    </form>
+  );
+}
+
+/** Monta o boneco: nome e foto, cor, senha. O boneco 3D ao lado atualiza na hora. */
+export function JoinFlow({ gid, onJoined, onError, theme }: { gid: string; onJoined: () => void; onError: (m: string) => void; theme?: Theme }) {
   const [step, setStep] = useState(0);
   const [name, setName] = useState("");
   const [photo, setPhoto] = useState<string>();
   const [color, setColor] = useState(BODY_COLORS[Math.floor(Math.random() * BODY_COLORS.length)]);
-  const [pin, setPin] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function join() {
     setLoading(true);
     try {
-      const s = await api<{ participantId: string; token: string }>(`/api/groups/${gid}/join`, { body: { name, photo, color, pin } });
+      const s = await api<{ participantId: string; token: string }>(`/api/groups/${gid}/join`, { body: { name, photo, color, password } });
       session.set(gid, s);
       boom("big");
       onJoined();
@@ -118,14 +184,14 @@ export function JoinFlow({ gid, onJoined, onError }: { gid: string; onJoined: ()
 
   const steps = [
     { title: "Monte seu boneco", ok: name.trim().length > 0 },
-    { title: "Cor da roupa", ok: true },
-    { title: "Crie um PIN", ok: pin.length >= 4 },
+    { title: theme === "tribunal" ? "Cor da gravata" : "Cor da roupa", ok: true },
+    { title: "Crie uma senha", ok: password.length >= 4 },
   ];
 
   return (
     <div className="grid items-stretch gap-4 lg:grid-cols-2">
       <div className="relative h-80 overflow-hidden rounded-[20px] border border-line bg-ink lg:h-auto lg:min-h-[460px]">
-        <Preview3D name={name || undefined} photo={photo} color={color} mode={step === 2 ? "dance" : "wave"} className="h-full w-full" />
+        <Preview3D name={name || undefined} photo={photo} color={color} mode={step === 2 ? "dance" : "wave"} className="h-full w-full" theme={theme} />
       </div>
       <Card>
         <p className="mb-1 text-sm font-semibold text-muted">
@@ -156,8 +222,11 @@ export function JoinFlow({ gid, onJoined, onError }: { gid: string; onJoined: ()
             )}
             {step === 1 && <ColorPicker value={color} onChange={setColor} />}
             {step === 2 && (
-              <Field label="De 4 a 6 números" hint="Serve para você entrar de novo em outro celular. Não conta pra ninguém.">
-                <PinInput value={pin} onChange={setPin} autoFocus />
+              <Field
+                label="Sua senha"
+                hint={`Para entrar de novo é só digitar seu nome (${name.trim() || "como você escreveu"}) e essa senha. Anote em algum lugar.`}
+              >
+                <PasswordInput value={password} onChange={setPassword} autoFocus autoComplete="new-password" />
               </Field>
             )}
             <div className="flex justify-between">
@@ -179,56 +248,22 @@ export function JoinFlow({ gid, onJoined, onError }: { gid: string; onJoined: ()
   );
 }
 
-/** Quem já entrou: escolhe o próprio boneco e digita o PIN. */
-export function LoginFlow({ gid, people, onJoined, onError }: { gid: string; people: PublicParticipant[]; onJoined: () => void; onError: (m: string) => void }) {
-  const [who, setWho] = useState<PublicParticipant | null>(null);
-  const [pin, setPin] = useState("");
-  const [loading, setLoading] = useState(false);
-  if (!people.length) return <p className="text-center text-muted">Ainda não entrou ninguém.</p>;
+/** Quem já entrou: digita o nome e a senha. */
+export function LoginFlow({ gid, onJoined, onError }: { gid: string; people?: PublicParticipant[]; onJoined: () => void; onError: (m: string) => void }) {
   return (
     <Card>
-      <h2 className="mb-4 font-display text-2xl font-semibold">Quem é você?</h2>
-      <div className="mb-4 flex flex-wrap gap-2">
-        {people.map((p) => (
-          <button
-            key={p.id}
-            onClick={() => setWho(p)}
-            className={`flex flex-col items-center gap-1 rounded-xl p-2 transition ${who?.id === p.id ? "bg-ink-3 ring-2 ring-gold" : "hover:bg-ink-3"}`}
-          >
-            <Avatar photo={p.photo} name={p.name} color={p.color} size={52} />
-            <span className="max-w-20 truncate text-xs">{p.name}</span>
-          </button>
-        ))}
-      </div>
-      <AnimatePresence>
-        {who && (
-          <motion.form
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            className="space-y-3 overflow-hidden"
-            onSubmit={async (e) => {
-              e.preventDefault();
-              setLoading(true);
-              try {
-                const s = await api<{ participantId: string; token: string }>(`/api/groups/${gid}/login`, { body: { participantId: who.id, pin } });
-                session.set(gid, s);
-                onJoined();
-              } catch (err) {
-                onError((err as Error).message);
-              } finally {
-                setLoading(false);
-              }
-            }}
-          >
-            <Field label={`PIN de ${who.name}`}>
-              <PinInput value={pin} onChange={setPin} autoFocus />
-            </Field>
-            <Button type="submit" className="w-full" disabled={pin.length < 4} loading={loading}>
-              Entrar
-            </Button>
-          </motion.form>
-        )}
-      </AnimatePresence>
+      <h2 className="mb-4 font-display text-2xl font-semibold">Entrar de novo</h2>
+      <NamePasswordForm
+        onSubmit={async (name, password) => {
+          try {
+            const s = await api<{ participantId: string; token: string }>(`/api/groups/${gid}/login`, { body: { name, password } });
+            session.set(gid, s);
+            onJoined();
+          } catch (err) {
+            onError((err as Error).message);
+          }
+        }}
+      />
     </Card>
   );
 }

@@ -3,8 +3,10 @@
 import { OrbitControls } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { useRef } from "react";
+import type { Theme } from "@/lib/theme";
 import type { PublicParticipant } from "@/lib/types";
 import { Character, type CharMode } from "./Character";
+import { Bench, Columns, CourtFloor, CourtSky, Flag, Papers, Scales } from "./Court";
 import { ChristmasTree, Ground, Lights, Sky, Snow } from "./World";
 
 export type LobbyMode = "idle" | "shuffle" | "party";
@@ -15,6 +17,7 @@ type Props = {
   highlightId?: string;
   onSelect?: (p: PublicParticipant) => void;
   className?: string;
+  theme?: Theme;
 };
 
 /** Controla a rotação do círculo de bonecos: parado, girando cada vez mais rápido, ou festa. */
@@ -29,7 +32,8 @@ function Spinner({ spin, mode }: { spin: React.RefObject<number>; mode: LobbyMod
   return null;
 }
 
-export default function Lobby({ people, mode = "idle", highlightId, onSelect, className }: Props) {
+export default function Lobby({ people, mode = "idle", highlightId, onSelect, className, theme = "natal" }: Props) {
+  const court = theme === "tribunal";
   const spin = useRef(0);
   const n = Math.max(people.length, 1);
   const radius = Math.max(2.4, n * 0.42);
@@ -39,11 +43,26 @@ export default function Lobby({ people, mode = "idle", highlightId, onSelect, cl
   return (
     <div className={className}>
       <Canvas shadows camera={{ position: [0, dist * 0.45, dist], fov: 42 }} dpr={[1, 2]}>
-        <Sky />
-        <Lights />
-        <Ground radius={radius + 3.5} />
-        <ChristmasTree scale={1 + Math.min(n, 20) * 0.03} />
-        <Snow />
+        {court ? (
+          <>
+            <CourtSky />
+            <Lights />
+            <CourtFloor radius={radius + 3.5} />
+            <Bench radius={radius + 2.4} />
+            <Columns radius={radius + 4.6} />
+            <Flag position={[-(radius + 1.2), 0, -(radius + 1.2)]} />
+            <Scales scale={1 + Math.min(n, 20) * 0.03} />
+            <Papers />
+          </>
+        ) : (
+          <>
+            <Sky />
+            <Lights />
+            <Ground radius={radius + 3.5} />
+            <ChristmasTree scale={1 + Math.min(n, 20) * 0.03} />
+            <Snow />
+          </>
+        )}
         <Spinner spin={spin} mode={mode} />
         {people.map((p, i) => (
           <Character
@@ -58,6 +77,7 @@ export default function Lobby({ people, mode = "idle", highlightId, onSelect, cl
             drop
             highlight={p.id === highlightId}
             onSelect={() => onSelect?.(p)}
+            outfit={court ? "ministro" : "noel"}
           />
         ))}
         <OrbitControls

@@ -1,3 +1,5 @@
+import type { Theme } from "./theme";
+
 export type WishItem = {
   id: string;
   title: string;
@@ -38,6 +40,8 @@ export type GroupMeta = {
   createdAt: number;
   drawnAt?: number;
   exclusions: [string, string][];
+  /** cenário do lobby; grupos antigos não têm (= natal) */
+  theme?: Theme;
 };
 
 export type PublicGroup = Omit<GroupMeta, "adminKey">;

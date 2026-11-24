@@ -191,7 +191,7 @@ export default function GroupPage() {
 
       <section className="relative mx-auto mt-6 max-w-6xl px-3 sm:px-5">
         <div className="relative h-[50vh] min-h-[340px] overflow-hidden rounded-[22px] border border-line">
-          <Lobby3D people={participants} mode={drawn ? "party" : "idle"} highlightId={mine?.id} onSelect={setSelected} className="h-full w-full" />
+          <Lobby3D people={participants} mode={drawn ? "party" : "idle"} highlightId={mine?.id} onSelect={setSelected} className="h-full w-full" theme={group.theme} />
           <div className="pointer-events-none absolute left-4 top-4 rounded-lg bg-ink/70 px-3 py-1.5 text-sm font-semibold backdrop-blur">
             {participants.length} {participants.length === 1 ? "pessoa" : "pessoas"}
             <span className="text-muted">{drawn ? "  ·  sorteio feito" : "  ·  esperando o sorteio"}</span>
@@ -221,7 +221,7 @@ export default function GroupPage() {
               </div>
             )}
             {entry === "join" && !drawn ? (
-              <JoinFlow gid={gid} onJoined={reload} onError={err} />
+              <JoinFlow gid={gid} onJoined={reload} onError={err} theme={group.theme} />
             ) : (
               <div className="mx-auto max-w-xl">
                 <LoginFlow gid={gid} people={participants} onJoined={reload} onError={err} />
@@ -372,7 +372,7 @@ export default function GroupPage() {
       <AnimatePresence>
         {reveal && me?.match && (
           <motion.div className="fixed inset-0 z-50 bg-ink" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <Reveal3D person={me.match} taps={reveal.taps} opened={reveal.opened} onTap={tapGift} className="absolute inset-0" />
+            <Reveal3D person={me.match} taps={reveal.taps} opened={reveal.opened} onTap={tapGift} className="absolute inset-0" theme={group.theme} />
             <div className="pointer-events-none absolute inset-x-0 top-10 px-4 text-center">
               <AnimatePresence mode="wait">
                 {!reveal.opened ? (

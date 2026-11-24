@@ -1,6 +1,7 @@
 import {
   deletePerson, getPeople, getPerson, getRevs, handle, HttpError, num, requireAdmin, saveMeta, str, toPublic,
 } from "@/lib/db";
+import { parseTheme } from "@/lib/theme";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -22,6 +23,7 @@ export const PATCH = handle(async (req: Request, { params }: Ctx) => {
     const d = str(b.eventDate, 40);
     meta.eventDate = d && !isNaN(Date.parse(d)) ? new Date(d).toISOString() : undefined;
   }
+  if ("theme" in b) meta.theme = parseTheme(b.theme);
   if ("budgetMin" in b) meta.budgetMin = num(b.budgetMin);
   if ("budgetMax" in b) meta.budgetMax = num(b.budgetMax);
   if ("exclusions" in b) {

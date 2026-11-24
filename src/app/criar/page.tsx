@@ -4,7 +4,9 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { boom, Button, Card, Field, Logo, SnowCSS, Toast } from "@/components/ui";
+import { ThemePicker } from "@/components/group/ThemePicker";
 import { adminKey, api } from "@/lib/client";
+import type { Theme } from "@/lib/theme";
 import { budgetLabel } from "@/lib/format";
 
 const PRESETS = [
@@ -28,6 +30,7 @@ export default function Criar() {
     budgetMax: "",
     description: "",
   });
+  const [theme, setTheme] = useState<Theme>("natal");
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setF({ ...f, [k]: e.target.value });
 
   const steps = [
@@ -42,6 +45,16 @@ export default function Criar() {
           <Field label="Seu nome" hint="Você vai ser quem organiza e aperta o botão do sorteio.">
             <input className="input" placeholder="Seu nome" value={f.organizerName} onChange={set("organizerName")} />
           </Field>
+        </>
+      ),
+    },
+    {
+      title: "Qual o cenário?",
+      ok: true,
+      body: (
+        <>
+          <p className="text-sm text-muted">É onde os bonecos ficam no lobby e na revelação. Dá para trocar depois no painel.</p>
+          <ThemePicker value={theme} onChange={setTheme} />
         </>
       ),
     },
@@ -98,7 +111,7 @@ export default function Criar() {
   async function create() {
     setLoading(true);
     try {
-      const body = { ...f, eventDate: f.eventDate ? new Date(f.eventDate).toISOString() : "" };
+      const body = { ...f, theme, eventDate: f.eventDate ? new Date(f.eventDate).toISOString() : "" };
       const res = await api<{ id: string; adminKey: string }>("/api/groups", { body });
       adminKey.set(res.id, res.adminKey);
       boom("big");

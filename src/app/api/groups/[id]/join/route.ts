@@ -1,5 +1,5 @@
 import { nanoid } from "nanoid";
-import { color, getMeta, getPeople, handle, hashPin, HttpError, newToken, photo, rateLimit, savePerson, str, validPin } from "@/lib/db";
+import { color, getMeta, getPeople, handle, hashPassword, HttpError, newToken, normName, photo, rateLimit, savePerson, str, validPassword } from "@/lib/db";
 import type { Participant } from "@/lib/types";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -12,11 +12,11 @@ export const POST = handle(async (req: Request, { params }: Ctx) => {
   const b = await req.json().catch(() => ({}));
   const name = str(b.name, 40);
   if (!name) throw new HttpError(400, "Qual o seu nome?");
-  if (!validPin(b.pin)) throw new HttpError(400, "O PIN precisa ter de 4 a 6 números");
+  if (!validPassword(b.password)) throw new HttpError(400, "A senha precisa ter pelo menos 4 caracteres");
   const people = await getPeople(id);
   if (people.length >= 80) throw new HttpError(400, "Grupo cheio (máx. 80)");
-  if (people.some((p) => p.name.toLowerCase() === name.toLowerCase()))
-    throw new HttpError(409, "Já tem alguém com esse nome. Se for você, use \"Já entrei\".");
+  if (people.some((p) => normName(p.name) === normName(name)))
+    throw new HttpError(409, "Já tem alguém com esse nome no grupo. Se for você, use \"Já entrei\". Se não, coloque o sobrenome.");
   const p: Participant = {
     id: nanoid(10),
     name,
@@ -25,7 +25,7 @@ export const POST = handle(async (req: Request, { params }: Ctx) => {
     emoji: str(b.emoji, 8),
     wishlist: [],
     joinedAt: Date.now(),
-    pinHash: hashPin(id, b.pin),
+    pinHash: hashPassword(b.password),
     token: newToken(),
   };
   await savePerson(id, p);

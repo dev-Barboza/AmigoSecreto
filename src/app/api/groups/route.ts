@@ -1,5 +1,6 @@
 import { groupId, handle, HttpError, num, saveMeta, str } from "@/lib/db";
 import { nanoid } from "nanoid";
+import { parseTheme } from "@/lib/theme";
 import type { GroupMeta } from "@/lib/types";
 
 export const POST = handle(async (req: Request) => {
@@ -24,6 +25,7 @@ export const POST = handle(async (req: Request) => {
     adminKey: nanoid(24),
     createdAt: Date.now(),
     exclusions: [],
+    theme: parseTheme(b.theme),
   };
   await saveMeta(meta);
   return { id: meta.id, adminKey: meta.adminKey };
