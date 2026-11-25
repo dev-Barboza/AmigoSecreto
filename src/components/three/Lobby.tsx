@@ -35,13 +35,14 @@ function Spinner({ spin, mode }: { spin: React.RefObject<number>; mode: LobbyMod
 export default function Lobby({ people, mode = "idle", highlightId, onSelect, className, theme = "natal" }: Props) {
   const court = theme === "tribunal";
   const spin = useRef(0);
+  const wrap = useRef<HTMLDivElement>(null);
   const n = Math.max(people.length, 1);
   const radius = Math.max(2.4, n * 0.42);
   const dist = radius * 1.9 + 5;
   const charMode: CharMode = mode === "shuffle" ? "run" : mode === "party" ? "dance" : "idle";
 
   return (
-    <div className={className}>
+    <div ref={wrap} className={className} style={{ position: "relative" }}>
       <Canvas shadows camera={{ position: [0, dist * 0.45, dist], fov: 42 }} dpr={[1, 2]}>
         {court ? (
           <>
@@ -78,6 +79,7 @@ export default function Lobby({ people, mode = "idle", highlightId, onSelect, cl
             highlight={p.id === highlightId}
             onSelect={() => onSelect?.(p)}
             outfit={court ? "ministro" : "noel"}
+            labelTarget={wrap}
           />
         ))}
         <OrbitControls

@@ -2,7 +2,7 @@ import { createHash, randomBytes, scryptSync, timingSafeEqual } from "crypto";
 import { customAlphabet, nanoid } from "nanoid";
 import { NextResponse } from "next/server";
 import { kv } from "./kv";
-import type { ChatMessage, GroupMeta, Participant, PublicGroup, PublicParticipant, WishItem } from "./types";
+import type { GroupMeta, Participant, PublicGroup, PublicParticipant, WishItem } from "./types";
 
 export const groupId = customAlphabet("23456789abcdefghjkmnpqrstuvwxyz", 8);
 
@@ -10,10 +10,8 @@ const K = {
   meta: (g: string) => `g:${g}:meta`,
   people: (g: string) => `g:${g}:p`,
   pairs: (g: string) => `g:${g}:pairs`,
-  chat: (g: string, santa: string) => `g:${g}:chat:${santa}`,
   rate: (g: string, what: string) => `g:${g}:rate:${what}`,
   rev: (g: string) => `g:${g}:rev`,
-  chatRev: (g: string) => `g:${g}:chatrev`,
   indexed: (g: string) => `g:${g}:indexed`,
   /** nome normalizado -> { grupo: participante }, para entrar só com nome e senha */
   byName: (n: string) => `n:${n}`,
@@ -70,14 +68,15 @@ export function cleanWishlist(v: unknown): WishItem[] {
   return v.slice(0, 30).flatMap((raw) => {
     const it = raw as Record<string, unknown>;
     const title = str(it.title, 120);
-    if (!title) return [];
+    const link = url(it.link);
+    if (!title && !link) return [];
     const p = Number(it.priority);
     return [
       {
         id: str(it.id, 30) || nanoid(10),
         title,
         price: num(it.price),
-        link: url(it.link),
+        link,
         note: str(it.note, 300) || undefined,
         priority: (p === 1 || p === 2 || p === 3 ? p : 2) as 1 | 2 | 3,
       },
@@ -171,22 +170,14 @@ export async function savePairs(gid: string, pairs: Record<string, string>) {
   for (const [santa, giftee] of Object.entries(pairs)) await kv().hset(K.pairs(gid), santa, giftee);
 }
 export async function clearDraw(gid: string, peopleIds: string[]) {
-  await kv().del(K.pairs(gid), ...peopleIds.map((p) => K.chat(gid, p)));
-  await bumpChatRev(gid);
-}
-
-export const getChat = (gid: string, santa: string) => kv().lrange<ChatMessage>(K.chat(gid, santa));
-export async function pushChat(gid: string, santa: string, m: ChatMessage) {
-  await kv().rpush(K.chat(gid, santa), m);
-  await bumpChatRev(gid);
+  await kv().del(K.pairs(gid));
 }
 
 // ---------- versões (o cliente só baixa tudo de novo quando algo muda) ----------
 export const bumpRev = (gid: string) => kv().incr(K.rev(gid));
-export const bumpChatRev = (gid: string) => kv().incr(K.chatRev(gid));
 export async function getRevs(gid: string) {
-  const [rev, chatRev] = await Promise.all([kv().get<number>(K.rev(gid)), kv().get<number>(K.chatRev(gid))]);
-  return { rev: Number(rev ?? 0), chatRev: Number(chatRev ?? 0) };
+  const rev = await kv().get<number>(K.rev(gid));
+  return { rev: Number(rev ?? 0) };
 }
 
 // ---------- auth ----------

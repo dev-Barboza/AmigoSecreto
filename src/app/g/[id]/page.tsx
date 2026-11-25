@@ -4,7 +4,6 @@ import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Chat } from "@/components/group/Chat";
 import { ColorPicker, JoinFlow, LoginFlow, PhotoPicker } from "@/components/group/Join";
 import { WishlistEditor, WishlistView } from "@/components/group/Wishlist";
 import { Avatar, boom, Button, Card, Countdown, Field, Hat, Lobby3D, Logo, Reveal3D, SnowCSS, Tabs, Toast } from "@/components/ui";
@@ -13,8 +12,8 @@ import { budgetLabel, dateLabel } from "@/lib/format";
 import type { MeResponse, PublicGroup, PublicParticipant } from "@/lib/types";
 
 type GroupData = { group: PublicGroup; participants: PublicParticipant[] };
-type Poll = { rev: number; chatRev: number; unchanged?: boolean } & Partial<GroupData>;
-type Tab = "match" | "list" | "char" | "santa";
+type Poll = { rev: number; unchanged?: boolean } & Partial<GroupData>;
+type Tab = "match" | "list" | "char";
 
 const TAP_TEXT = ["Toque para descobrir", "De novo", "Quase lá..."];
 
@@ -29,7 +28,7 @@ export default function GroupPage() {
   const [selected, setSelected] = useState<PublicParticipant | null>(null);
   const [reveal, setReveal] = useState<{ taps: number; opened: boolean; done: boolean } | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
-  const revs = useRef({ rev: -1, chatRev: -1 });
+  const revs = useRef({ rev: -1 });
 
   /** Pergunta ao servidor se algo mudou; só baixa o grupo (com as fotos) e o "meu" quando precisa. */
   const load = useCallback(
@@ -37,10 +36,9 @@ export default function GroupPage() {
       try {
         const d = await api<Poll>(`/api/groups/${gid}${force ? "" : `?rev=${revs.current.rev}`}`);
         const groupChanged = !d.unchanged;
-        const chatChanged = d.chatRev !== revs.current.chatRev;
         if (groupChanged && d.group && d.participants) setData({ group: d.group, participants: d.participants });
-        revs.current = { rev: d.rev, chatRev: d.chatRev };
-        if (session.get(gid) && (force || groupChanged || chatChanged)) {
+        revs.current = { rev: d.rev };
+        if (session.get(gid) && (force || groupChanged)) {
           try {
             setMe(await api<MeResponse>(`/api/groups/${gid}/me`, { gid }));
           } catch (e) {
@@ -153,7 +151,6 @@ export default function GroupPage() {
     ...(drawn && revealed ? ([["match", "Quem eu tirei"]] as [Tab, string][]) : []),
     ["list", "Minha lista"],
     ["char", "Meu boneco"],
-    ...(drawn ? ([["santa", "Quem me tirou"]] as [Tab, string][]) : []),
   ];
 
   const info = [budgetLabel(group.budgetMin, group.budgetMax), group.eventDate && dateLabel(group.eventDate), group.eventPlace].filter(Boolean);
@@ -258,7 +255,7 @@ export default function GroupPage() {
             <AnimatePresence mode="wait">
               <motion.div key={tab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}>
                 {tab === "match" && me?.match && (
-                  <div className="grid gap-5 lg:grid-cols-2">
+                  <div className="mx-auto max-w-2xl">
                     <Card>
                       <div className="mb-4 flex items-center gap-4">
                         <Avatar photo={me.match.photo} name={me.match.name} color={me.match.color} size={68} />
@@ -271,20 +268,6 @@ export default function GroupPage() {
                       <h3 className="mb-2 mt-5 font-bold">Lista de presentes</h3>
                       <WishlistView items={me.match.wishlist} group={group} />
                     </Card>
-                    <Card delay={0.08}>
-                      <h3 className="font-bold">Conversar com {me.match.name}</h3>
-                      <p className="mb-3 text-sm text-muted">Do outro lado aparece só “{group.theme === "tribunal" ? "Ministro anônimo" : "Papai Noel"}”. Pergunte o que precisar.</p>
-                      <Chat
-                        messages={me.chatWithGiftee}
-                        me="santa"
-                        otherLabel={me.match.name}
-                        placeholder="Qual o número do seu calçado?"
-                        onSend={async (text) => {
-                          await api(`/api/groups/${gid}/messages`, { gid, body: { to: "giftee", text } }).catch((e) => err(e.message));
-                          await reload();
-                        }}
-                      />
-                    </Card>
                   </div>
                 )}
                 {tab === "list" && (
@@ -295,22 +278,6 @@ export default function GroupPage() {
                   </Card>
                 )}
                 {tab === "char" && <CharacterEditor me={mine} onSave={updateMe} />}
-                {tab === "santa" && (
-                  <Card>
-                    <h2 className="font-display text-2xl font-semibold">Quem me tirou</h2>
-                    <p className="mb-3 text-sm text-muted">Você não sabe quem é, e a pessoa não vai contar. Mas dá pra conversar e soltar umas dicas.</p>
-                    <Chat
-                      messages={me?.chatWithSanta ?? []}
-                      me="giftee"
-                      otherLabel={group.theme === "tribunal" ? "Ministro anônimo" : "Papai Noel"}
-                      placeholder="Uma dica: eu adoro café"
-                      onSend={async (text) => {
-                        await api(`/api/groups/${gid}/messages`, { gid, body: { to: "santa", text } }).catch((e) => err(e.message));
-                        await reload();
-                      }}
-                    />
-                  </Card>
-                )}
               </motion.div>
             </AnimatePresence>
 

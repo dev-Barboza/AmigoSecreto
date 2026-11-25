@@ -2,7 +2,6 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { useRef, useState } from "react";
-import { Chat } from "@/components/group/Chat";
 import { ColorPicker, PhotoPicker } from "@/components/group/Join";
 import { WishlistEditor, WishlistView } from "@/components/group/Wishlist";
 import { ThemePicker } from "@/components/group/ThemePicker";
@@ -10,7 +9,7 @@ import { Avatar, boom, Button, Card, Field, Lobby3D, Logo, Reveal3D, Tabs } from
 import type { Theme } from "@/lib/theme";
 import type { LobbyMode } from "@/components/three/Lobby";
 import { budgetLabel, BODY_COLORS } from "@/lib/format";
-import type { ChatMessage, PublicGroup, PublicParticipant, WishItem } from "@/lib/types";
+import type { PublicGroup, PublicParticipant, WishItem } from "@/lib/types";
 
 /** Página de demonstração: tudo roda no navegador, sem banco. Nada é salvo. */
 
@@ -92,13 +91,6 @@ const SAMPLES: Sample[] = [
   },
 ];
 
-const REPLIES = [
-  "Haha, quem é você?",
-  "Qualquer coisa da minha lista eu vou amar.",
-  "Meu tamanho tá no perfil, dá uma olhada.",
-  "Prefiro cores escuras, se puder escolher.",
-  "Não conta pra ninguém, mas o primeiro da lista é o que eu mais quero.",
-];
 
 const ME_ID = "me";
 const fromSample = (s: Sample, i: number): PublicParticipant => ({ id: `p${i}`, emoji: "", joinedAt: i, ...s });
@@ -117,8 +109,6 @@ export default function Demo() {
   const [theme, setTheme] = useState<Theme>("natal");
   const [tab, setTab] = useState<Tab>("char");
   const [selected, setSelected] = useState<PublicParticipant | null>(null);
-  const [chat, setChat] = useState<ChatMessage[]>([]);
-  const replyIdx = useRef(0);
 
   // formulário "adicionar pessoa"
   const [name, setName] = useState("");
@@ -131,8 +121,6 @@ export default function Demo() {
   function draw() {
     setMode("shuffle");
     setRevealed(false);
-    setChat([]);
-    replyIdx.current = 0;
     setTimeout(() => {
       setMode("party");
       boom("big");
@@ -172,11 +160,6 @@ export default function Demo() {
     if (tab === "match") setTab("list");
   }
 
-  async function send(text: string) {
-    setChat((c) => [...c, { from: "santa", text, at: Date.now() }]);
-    const reply = REPLIES[replyIdx.current++ % REPLIES.length];
-    setTimeout(() => setChat((c) => [...c, { from: "giftee", text: reply, at: Date.now() }]), 1200);
-  }
 
   function add() {
     if (!name.trim()) return;
@@ -250,7 +233,7 @@ export default function Demo() {
         <AnimatePresence mode="wait">
           <motion.div key={tab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}>
             {tab === "match" && match && (
-              <div className="grid gap-5 lg:grid-cols-2">
+              <div className="mx-auto max-w-2xl">
                 <Card>
                   <div className="mb-4 flex items-center gap-4">
                     <Avatar photo={match.photo} name={match.name} color={match.color} size={68} />
@@ -262,11 +245,6 @@ export default function Demo() {
                   <ProfileExtras p={match} />
                   <h3 className="mb-2 mt-5 font-bold">Lista de presentes</h3>
                   <WishlistView items={match.wishlist} group={GROUP} />
-                </Card>
-                <Card delay={0.08}>
-                  <h3 className="font-bold">Conversar com {match.name}</h3>
-                  <p className="mb-3 text-sm text-muted">Do outro lado aparece só “Papai Noel”. Na demonstração, a pessoa responde sozinha.</p>
-                  <Chat messages={chat} me="santa" otherLabel={match.name} placeholder="Qual o número do seu calçado?" onSend={send} />
                 </Card>
               </div>
             )}

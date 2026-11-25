@@ -27,6 +27,8 @@ export type CharacterProps = {
   highlight?: boolean;
   onSelect?: () => void;
   outfit?: Outfit;
+  /** onde pendurar a etiqueta do nome (sem isso, o primeiro boneco podia ficar sem nome) */
+  labelTarget?: React.RefObject<HTMLElement | null>;
 };
 
 const SKIN = "#ffdcc2";
@@ -110,7 +112,7 @@ function useFaceTexture(photo: string | undefined, color: string) {
 
 export function Character({
   name, photo, color, position, angle = 0, radius = 0, spin, mode = "idle", drop = false,
-  scale = 1, showLabel = true, highlight = false, onSelect, outfit = "noel",
+  scale = 1, showLabel = true, highlight = false, onSelect, outfit = "noel", labelTarget,
 }: CharacterProps) {
   const judge = outfit === "ministro";
   const root = useRef<THREE.Group>(null);
@@ -351,7 +353,7 @@ export function Character({
           )}
         </group>
         {showLabel && name && (
-          <Html position={[0, 2.35, 0]} center distanceFactor={9} zIndexRange={[20, 0]} style={{ pointerEvents: "none" }}>
+          <Html portal={labelTarget as React.RefObject<HTMLElement>} position={[0, 2.35, 0]} center distanceFactor={9} zIndexRange={[20, 0]} style={{ pointerEvents: "none" }}>
             <div
               className="whitespace-nowrap rounded-md px-2.5 py-0.5 text-sm font-bold text-white"
               style={{ background: color, boxShadow: "0 2px 0 rgba(0,0,0,.35)" }}

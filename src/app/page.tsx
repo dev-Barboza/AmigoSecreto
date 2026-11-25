@@ -14,7 +14,7 @@ const faq: [string, string][] = [
   ["Precisa baixar alguma coisa?", "Não. É um link: abre no navegador do celular, a pessoa coloca o nome, uma foto se quiser, e uma senha."],
   ["E se alguém esquecer a senha?", "Quem organiza cria uma senha nova pela página de organizador. O resto do grupo não é afetado."],
   ["Dá para impedir que casal se tire?", "Dá. Antes do sorteio, quem organiza marca os pares que não podem sair."],
-  ["Como pergunto o tamanho da roupa sem me entregar?", "Pelo chat anônimo. Do outro lado aparece só “Papai Noel” (ou “Ministro anônimo”, no tribunal)."],
+  ["Já tenho uma lista na Amazon. Preciso refazer?", "Não. Na sua lista, cola o link da lista que você já tem e pronto. Quem te tirar abre direto."],
 ];
 
 export default function Home() {

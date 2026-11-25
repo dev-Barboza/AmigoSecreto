@@ -3,7 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
 import { Button, Field } from "@/components/ui";
-import { inBudget, money } from "@/lib/format";
+import { inBudget, money, siteName } from "@/lib/format";
 import { suggestionsFor } from "@/lib/suggestions";
 import type { PublicGroup, WishItem } from "@/lib/types";
 
@@ -34,14 +34,14 @@ export function WishCard({ item, group, onRemove, index = 0 }: { item: WishItem;
       <span className={`mt-2 h-2.5 w-2.5 shrink-0 rounded-full ${PRIORITY_COLOR[item.priority]}`} title={PRIORITY[item.priority]} />
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <span className="font-semibold">{item.title}</span>
+          <span className="font-semibold">{item.title || (item.link ? `Lista em ${siteName(item.link)}` : "")}</span>
           {item.price !== undefined && <span className="font-display text-gold">{money(item.price)}</span>}
           <BudgetBadge price={item.price} group={group} />
         </div>
         {item.note && <p className="text-sm text-muted">{item.note}</p>}
         {item.link && (
           <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-sm text-gold underline underline-offset-2 hover:text-cream">
-            ver na loja
+            {item.title ? "ver na loja" : "abrir a lista"}
           </a>
         )}
       </div>
@@ -60,6 +60,7 @@ export function WishlistEditor({ items, group, onChange }: { items: WishItem[]; 
   const [open, setOpen] = useState(items.length === 0);
   const [showIdeas, setShowIdeas] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [quickLink, setQuickLink] = useState("");
   const ideas = suggestionsFor(group.budgetMin, group.budgetMax);
 
   async function save(next: WishItem[]) {
@@ -73,7 +74,7 @@ export function WishlistEditor({ items, group, onChange }: { items: WishItem[]; 
 
   async function add(e?: React.FormEvent) {
     e?.preventDefault();
-    if (!f.title.trim()) return;
+    if (!f.title.trim() && !f.link.trim()) return;
     const price = parseFloat(f.price.replace(",", "."));
     await save([
       ...items,
@@ -99,6 +100,26 @@ export function WishlistEditor({ items, group, onChange }: { items: WishItem[]; 
         </AnimatePresence>
       </ul>
       {items.length === 0 && <p className="text-sm text-muted">Lista vazia por enquanto.</p>}
+
+      <form
+        className="rounded-xl border border-line bg-ink p-4"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          const link = quickLink.trim();
+          if (!link) return;
+          await save([...items, { id: Math.random().toString(36).slice(2, 10), title: "", link, priority: 3 }]);
+          setQuickLink("");
+        }}
+      >
+        <Field label="Já tem uma lista em outro site?" hint="Amazon, Mercado Livre, Magalu, Shopee... Cola o link e quem te tirar abre direto.">
+          <div className="flex gap-2">
+            <input className="input min-w-0 flex-1" inputMode="url" placeholder="https://..." value={quickLink} onChange={(e) => setQuickLink(e.target.value)} />
+            <Button type="submit" variant="gold" disabled={!quickLink.trim()} loading={saving}>
+              Adicionar
+            </Button>
+          </div>
+        </Field>
+      </form>
 
       <div className="flex flex-wrap gap-2">
         <Button variant={open ? "ghost" : "red"} onClick={() => setOpen(!open)}>
@@ -139,7 +160,7 @@ export function WishlistEditor({ items, group, onChange }: { items: WishItem[]; 
             onSubmit={add}
             className="space-y-3 overflow-hidden rounded-xl border border-line bg-ink p-4"
           >
-            <Field label="O que você quer ganhar?">
+            <Field label="O que você quer ganhar?" hint="Se preferir, deixa em branco e coloca só o link.">
               <input className="input" placeholder="Fone bluetooth" value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} />
             </Field>
             <div className="grid grid-cols-2 gap-3">
@@ -166,7 +187,7 @@ export function WishlistEditor({ items, group, onChange }: { items: WishItem[]; 
                 </button>
               ))}
             </div>
-            <Button type="submit" variant="gold" className="w-full" disabled={!f.title.trim()} loading={saving}>
+            <Button type="submit" variant="gold" className="w-full" disabled={!f.title.trim() && !f.link.trim()} loading={saving}>
               Adicionar
             </Button>
           </motion.form>
@@ -177,7 +198,7 @@ export function WishlistEditor({ items, group, onChange }: { items: WishItem[]; 
 }
 
 export function WishlistView({ items, group }: { items: WishItem[]; group: PublicGroup }) {
-  if (!items.length) return <p className="text-sm text-muted">Ainda não colocou nada. Dá pra perguntar pelo chat.</p>;
+  if (!items.length) return <p className="text-sm text-muted">Ainda não colocou nada na lista.</p>;
   const sorted = [...items].sort((a, b) => b.priority - a.priority);
   return (
     <ul className="space-y-2">

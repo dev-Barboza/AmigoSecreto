@@ -2,7 +2,7 @@ import { ensureIndexed, getMeta, getPeople, getRevs, groupPublic, handle, toPubl
 
 type Ctx = { params: Promise<{ id: string }> };
 
-// ?rev=N&chatRev=M: se nada mudou, responde só as versões (1 leitura barata em vez do grupo inteiro com fotos)
+// ?rev=N: se nada mudou, responde só as versões (1 leitura barata em vez do grupo inteiro com fotos)
 export const GET = handle(async (req: Request, { params }: Ctx) => {
   const { id } = await params;
   const q = new URL(req.url).searchParams;

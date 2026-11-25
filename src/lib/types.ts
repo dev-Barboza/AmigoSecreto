@@ -46,16 +46,8 @@ export type GroupMeta = {
 
 export type PublicGroup = Omit<GroupMeta, "adminKey">;
 
-export type ChatMessage = {
-  from: "santa" | "giftee";
-  text: string;
-  at: number;
-};
-
 export type MeResponse = {
   me: PublicParticipant;
   group: PublicGroup;
   match?: PublicParticipant;
-  chatWithGiftee: ChatMessage[];
-  chatWithSanta: ChatMessage[];
 };

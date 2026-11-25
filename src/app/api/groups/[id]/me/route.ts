@@ -1,5 +1,5 @@
 import {
-  cleanWishlist, color, getChat, getMeta, getPairs, getPerson, groupPublic, handle, HttpError,
+  cleanWishlist, color, getMeta, getPairs, getPerson, groupPublic, handle, HttpError,
   photo, requireParticipant, savePerson, str, toPublic,
 } from "@/lib/db";
 import type { MeResponse } from "@/lib/types";
@@ -10,17 +10,14 @@ export const GET = handle(async (req: Request, { params }: Ctx): Promise<MeRespo
   const { id } = await params;
   const me = await requireParticipant(req, id);
   const meta = await getMeta(id);
-  const res: MeResponse = { me: toPublic(me), group: groupPublic(meta), chatWithGiftee: [], chatWithSanta: [] };
+  const res: MeResponse = { me: toPublic(me), group: groupPublic(meta) };
   if (meta.drawnAt) {
     const pairs = await getPairs(id);
     const gifteeId = pairs[me.id];
-    const santaId = Object.keys(pairs).find((s) => pairs[s] === me.id);
     if (gifteeId && me.revealedAt) {
       const giftee = await getPerson(id, gifteeId);
       if (giftee) res.match = toPublic(giftee);
-      res.chatWithGiftee = await getChat(id, me.id);
     }
-    if (santaId) res.chatWithSanta = await getChat(id, santaId);
   }
   return res;
 });
