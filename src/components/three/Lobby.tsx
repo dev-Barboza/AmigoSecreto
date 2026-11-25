@@ -7,7 +7,7 @@ import type { Theme } from "@/lib/theme";
 import type { PublicParticipant } from "@/lib/types";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { Character, type CharMode, type DragOptions } from "./Character";
-import { Bench, Columns, CourtFloor, CourtSky, Flag, Papers, Scales } from "./Court";
+import { Bench, Columns, CourtFloor, CourtSky, Flag, Papers, Plaque, Scales } from "./Court";
 import { ChristmasTree, Ground, Lights, Sky, Snow } from "./World";
 
 export type LobbyMode = "idle" | "shuffle" | "party";
@@ -58,6 +58,7 @@ export default function Lobby({ people, mode = "idle", highlightId, onSelect, cl
             <Lights />
             <CourtFloor radius={radius + 3.5} />
             <Bench radius={radius + 2.4} />
+            <Plaque position={[0, 3.5, -(radius + 3.4)]} width={Math.min(7, 4.4 + radius * 0.4)} />
             <Columns radius={radius + 4.6} />
             <Flag position={[-(radius + 1.2), 0, -(radius + 1.2)]} />
             <Scales scale={1 + Math.min(n, 20) * 0.03} />

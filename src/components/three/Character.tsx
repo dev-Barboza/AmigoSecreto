@@ -43,6 +43,11 @@ export type DragOptions = {
 
 const FLOOR = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 const hit = new THREE.Vector3();
+const home = new THREE.Vector3();
+const step = new THREE.Vector3();
+/** segundos tonto depois de cair, antes de voltar andando */
+const DIZZY = 1.6;
+const WALK_SPEED = 3.2;
 
 const SKIN = "#ffdcc2";
 const TOGA = "#151515";
@@ -145,27 +150,54 @@ export function Character({
   const downAt = useRef<{ x: number; y: number } | null>(null);
   const suppressClick = useRef(false);
   const landAt = useRef(-99);
+  const heat = useRef(0); // 0..1, quão vermelho está
+  const headMat = useRef<THREE.MeshStandardMaterial>(null);
+  const faceMat = useRef<THREE.MeshStandardMaterial>(null);
+  const feet = useRef<(THREE.Mesh | null)[]>([]);
+  const stars = useRef<THREE.Group>(null);
 
-  useFrame(({ clock, camera }) => {
+  useFrame(({ clock, camera }, dt) => {
     const t = clock.elapsedTime;
     if (born.current === null) born.current = t;
     const g = root.current, b = body.current;
     if (!g || !b) return;
+    const held = dragging.current;
+    const sinceLand = t - landAt.current;
+    const dizzy = !held && placed.current !== null && sinceLand < DIZZY;
+    let walking = false;
 
     // posição no círculo ou fixa
-    if (mode === "run" && placed.current && !dragging.current) placed.current = null; // no sorteio, volta pra roda
+    if (mode === "run" && placed.current && !held) placed.current = null; // no sorteio, volta pra roda
+
+    const turnTo = (yaw: number, k: number) => {
+      let d = yaw - g.rotation.y;
+      d = Math.atan2(Math.sin(d), Math.cos(d));
+      g.rotation.y += d * k;
+    };
+    const a = angle + (spin?.current ?? 0);
+    home.set(Math.sin(a) * radius, 0, Math.cos(a) * radius);
 
     if (position) {
       g.position.set(position[0], position[1], position[2]);
     } else if (placed.current) {
-      g.position.lerp(placed.current, dragging.current ? 0.35 : 0.2);
-      const yaw = Math.atan2(camera.position.x - g.position.x, camera.position.z - g.position.z);
-      let d = yaw - g.rotation.y;
-      d = Math.atan2(Math.sin(d), Math.cos(d));
-      g.rotation.y += d * 0.08;
+      if (held || dizzy) {
+        // segue o dedo / assenta onde caiu
+        g.position.lerp(placed.current, held ? 0.35 : 0.2);
+        turnTo(Math.atan2(camera.position.x - g.position.x, camera.position.z - g.position.z), 0.08);
+      } else {
+        // passou a tontura: volta andando para o lugar dele na roda
+        step.subVectors(home, g.position);
+        const dist = step.length();
+        if (dist < 0.06) {
+          placed.current = null;
+        } else {
+          walking = true;
+          g.position.addScaledVector(step.normalize(), Math.min(dist, WALK_SPEED * dt));
+          turnTo(Math.atan2(step.x, step.z), 0.2);
+        }
+      }
     } else {
-      const a = angle + (spin?.current ?? 0);
-      g.position.set(Math.sin(a) * radius, 0, Math.cos(a) * radius);
+      g.position.copy(home);
       if (mode === "run") g.rotation.y = a + Math.PI / 2;
       else {
         // vira suavemente para a câmera, para a foto sempre aparecer
@@ -221,16 +253,48 @@ export function Character({
       armA = armB = 2.8;
     }
 
-    // pendurado enquanto é arrastado: sobe, balança e levanta os braços
-    if (dragging.current) {
+    // pendurado enquanto é arrastado: sobe, se debate e esperneia
+    let kick = 0;
+    if (held) {
       y = 0.7 + Math.sin(t * 7) * 0.05;
-      armA = armB = 2.7 + Math.sin(t * 9) * 0.15;
+      armA = 2.5 + Math.sin(t * 18) * 0.45;
+      armB = 2.5 + Math.sin(t * 18 + Math.PI) * 0.45;
       armX = 0;
+      kick = 1;
     }
-    b.rotation.z = dragging.current ? Math.sin(t * 6) * 0.18 : 0;
+    let tilt = held ? Math.sin(t * 9) * 0.22 : 0;
+    // tonto depois de cair: cambaleia com as estrelinhas girando
+    if (dizzy) {
+      const k = sinceLand / DIZZY;
+      tilt = Math.sin(t * 7) * 0.16 * (1 - k * 0.5);
+      rotY = Math.sin(t * 3.5) * 0.35;
+      armA = armB = 0.6 + Math.sin(t * 7) * 0.2;
+    }
+    // andando de volta
+    if (walking) {
+      y = Math.abs(Math.sin(t * 13 + phase)) * 0.14;
+      armX = Math.sin(t * 13 + phase) * 0.8;
+      armA = armB = 0.3;
+    }
+    b.rotation.z = tilt;
     // amassadinha ao cair no chão
-    const l = t - landAt.current;
-    if (l < 0.45) squash *= 1 - Math.sin((l / 0.45) * Math.PI) * 0.22;
+    if (sinceLand < 0.45) squash *= 1 - Math.sin((sinceLand / 0.45) * Math.PI) * 0.22;
+
+    // vermelho de raiva/vergonha: esquenta enquanto segura, esfria devagar depois
+    heat.current = THREE.MathUtils.lerp(heat.current, held ? 1 : 0, held ? 0.06 : 0.025);
+    const h = heat.current * (0.75 + Math.sin(t * 10) * 0.25 * heat.current);
+    for (const m of [headMat.current, faceMat.current]) {
+      if (m) m.emissiveIntensity = h * 0.85;
+    }
+    feet.current.forEach((f, i) => {
+      if (!f) return;
+      const swing = walking ? Math.max(0, Math.sin(t * 13 + phase + i * Math.PI)) * 0.08 : 0;
+      f.position.y = 0.1 + kick * Math.max(0, Math.sin(t * 16 + i * Math.PI)) * 0.16 + swing;
+    });
+    if (stars.current) {
+      stars.current.visible = dizzy;
+      stars.current.rotation.y = t * 5;
+    }
 
     b.position.y = y;
     b.rotation.y = rotY;
@@ -296,8 +360,8 @@ export function Character({
         }}
       >
         {/* pés */}
-        {[-0.15, 0.15].map((x) => (
-          <mesh key={x} position={[x, 0.1, 0.06]} castShadow>
+        {[-0.15, 0.15].map((x, i) => (
+          <mesh key={x} ref={(m) => void (feet.current[i] = m)} position={[x, 0.1, 0.06]} castShadow>
             <sphereGeometry args={[0.13, 20, 16]} />
             <meshStandardMaterial color="#3b2416" roughness={0.6} />
           </mesh>
@@ -390,14 +454,23 @@ export function Character({
         ))}
         {/* cabeça */}
         <group position={[0, 1.33, 0]}>
+          {/* estrelinhas de tontura (aparecem depois de ser arrastado) */}
+          <group ref={stars} position={[0, judge ? 0.55 : 0.85, 0]} visible={false}>
+            {[0, 1, 2].map((i) => (
+              <mesh key={i} position={[Math.cos((i * Math.PI * 2) / 3) * 0.48, Math.sin(i * 2.1) * 0.06, Math.sin((i * Math.PI * 2) / 3) * 0.48]}>
+                <octahedronGeometry args={[0.08, 0]} />
+                <meshStandardMaterial color="#fde047" emissive="#facc15" emissiveIntensity={1.6} />
+              </mesh>
+            ))}
+          </group>
           <mesh castShadow>
             <sphereGeometry args={[0.42, 32, 24]} />
-            <meshStandardMaterial color={SKIN} roughness={0.7} />
+            <meshStandardMaterial ref={headMat} color={SKIN} roughness={0.7} emissive="#ff1a1a" emissiveIntensity={0} />
           </mesh>
           {face && (
             <mesh>
               <sphereGeometry args={[0.425, 48, 32, Math.PI / 2 - Math.PI * 0.32, Math.PI * 0.64, Math.PI * 0.18, Math.PI * 0.64]} />
-              <meshStandardMaterial map={face} roughness={0.6} />
+              <meshStandardMaterial ref={faceMat} map={face} roughness={0.6} emissive="#ff1a1a" emissiveIntensity={0} />
             </mesh>
           )}
           {judge ? (

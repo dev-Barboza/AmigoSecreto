@@ -343,3 +343,86 @@ export function Papers({ count = 70, area = 20 }: { count?: number; area?: numbe
     </instancedMesh>
   );
 }
+
+let plaqueTex: THREE.Texture | null = null;
+function plaqueTexture() {
+  if (plaqueTex) return plaqueTex;
+  const W = 1600, H = 480;
+  const c = document.createElement("canvas");
+  c.width = W;
+  c.height = H;
+  const ctx = c.getContext("2d")!;
+  // madeira escura com veios
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, "#4a2e1b");
+  g.addColorStop(1, "#33200f");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = "rgba(0,0,0,.18)";
+  ctx.lineWidth = 3;
+  for (let i = 0; i < 14; i++) {
+    ctx.beginPath();
+    const y0 = (i / 14) * H + 10;
+    ctx.moveTo(0, y0);
+    ctx.bezierCurveTo(W * 0.3, y0 + 18, W * 0.6, y0 - 16, W, y0 + 8);
+    ctx.stroke();
+  }
+  // moldura dourada dupla
+  ctx.strokeStyle = "#d4a537";
+  ctx.lineWidth = 16;
+  ctx.strokeRect(22, 22, W - 44, H - 44);
+  ctx.lineWidth = 4;
+  ctx.strokeRect(54, 54, W - 108, H - 108);
+  // texto
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = "#e8c45f";
+  ctx.shadowColor = "rgba(0,0,0,.55)";
+  ctx.shadowOffsetY = 6;
+  ctx.shadowBlur = 8;
+  ctx.font = "bold 190px Georgia, 'Times New Roman', serif";
+  ctx.fillText("STF", W / 2, H * 0.4);
+  ctx.font = "600 56px Georgia, 'Times New Roman', serif";
+  const sub = "SUPREMO TRIBUNAL FEDERAL";
+  // espaçamento entre letras feito à mão (canvas não tem letter-spacing em todo navegador)
+  const spacing = 10;
+  const widths = [...sub].map((ch) => ctx.measureText(ch).width);
+  const total = widths.reduce((s, w) => s + w, 0) + spacing * (sub.length - 1);
+  let x = W / 2 - total / 2;
+  ctx.textAlign = "left";
+  [...sub].forEach((ch, i) => {
+    ctx.fillText(ch, x, H * 0.76);
+    x += widths[i] + spacing;
+  });
+  plaqueTex = new THREE.CanvasTexture(c);
+  plaqueTex.colorSpace = THREE.SRGBColorSpace;
+  plaqueTex.anisotropy = 8;
+  return plaqueTex;
+}
+
+/** Placa grande "STF - Supremo Tribunal Federal", pendurada no fundo do plenário. */
+export function Plaque({ position, width = 5 }: { position: [number, number, number]; width?: number }) {
+  const h = width * 0.3;
+  return (
+    <group position={position}>
+      {/* correntes */}
+      {[-1, 1].map((d) => (
+        <mesh key={d} position={[d * width * 0.35, h / 2 + 0.6, -0.02]}>
+          <cylinderGeometry args={[0.02, 0.02, 1.2, 6]} />
+          <meshStandardMaterial color={GOLD} metalness={0.8} roughness={0.3} />
+        </mesh>
+      ))}
+      {/* tábua com espessura */}
+      <mesh position={[0, 0, -0.08]} castShadow>
+        <boxGeometry args={[width + 0.08, h + 0.08, 0.14]} />
+        <meshStandardMaterial color="#2a190c" roughness={0.6} />
+      </mesh>
+      <mesh>
+        <planeGeometry args={[width, h]} />
+        <meshStandardMaterial map={plaqueTexture()} roughness={0.45} metalness={0.1} />
+      </mesh>
+      {/* luz suave iluminando a placa */}
+      <pointLight position={[0, -0.4, 1.4]} intensity={4} distance={4} color="#ffe2a8" />
+    </group>
+  );
+}
