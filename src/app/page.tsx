@@ -1,8 +1,7 @@
 "use client";
 
-import { motion } from "framer-motion";
 import Link from "next/link";
-import { Button, Lobby3D, Logo, SnowCSS } from "@/components/ui";
+import { Button, Lobby3D, Logo } from "@/components/ui";
 import type { PublicParticipant } from "@/lib/types";
 
 const demo: PublicParticipant[] = [
@@ -10,112 +9,87 @@ const demo: PublicParticipant[] = [
   ["Eva", "#9333ea"], ["Fábio", "#0891b2"], ["Gabi", "#db2777"],
 ].map(([name, color], i) => ({ id: String(i), name, color, emoji: "", wishlist: [], joinedAt: i }));
 
-const steps = [
-  ["Crie o grupo", "Dê um nome, defina o valor do presente e a data da troca."],
-  ["Mande o link", "Cada um entra pelo celular, coloca uma foto e vira um bonequinho."],
-  ["Façam a lista", "Todo mundo anota o que quer ganhar, com preço e link da loja."],
-  ["Sorteie", "Só você aperta o botão, mas nem você fica sabendo quem tirou quem."],
+const faq: [string, string][] = [
+  ["Quem organiza consegue ver quem tirou quem?", "Não. O sorteio fica guardado no servidor e cada pessoa só vê o próprio resultado. Nem quem apertou o botão sabe."],
+  ["Precisa baixar alguma coisa?", "Não. É um link: abre no navegador do celular, a pessoa coloca o nome, uma foto se quiser, e uma senha."],
+  ["E se alguém esquecer a senha?", "Quem organiza cria uma senha nova pela página de organizador. O resto do grupo não é afetado."],
+  ["Dá para impedir que casal se tire?", "Dá. Antes do sorteio, quem organiza marca os pares que não podem sair."],
+  ["Como pergunto o tamanho da roupa sem me entregar?", "Pelo chat anônimo. Do outro lado aparece só “Papai Noel” (ou “Ministro anônimo”, no tribunal)."],
 ];
 
 export default function Home() {
   return (
-    <main className="relative overflow-hidden">
-      <SnowCSS count={25} />
-      <nav className="relative z-10 mx-auto flex max-w-6xl items-center justify-between px-5 pt-6">
+    <main>
+      <nav className="mx-auto flex max-w-5xl items-center justify-between px-5 pt-6">
         <Logo />
-        <div className="flex items-center gap-5">
-          <Link href="/criar" className="text-sm font-semibold text-muted hover:text-cream">
+        <div className="flex items-center gap-5 text-sm font-semibold">
+          <Link href="/criar" className="text-muted hover:text-cream">
             Criar grupo
           </Link>
-          <Link href="/entrar" className="rounded-full border border-line px-4 py-1.5 text-sm font-semibold text-cream hover:border-gold">
+          <Link href="/entrar" className="text-cream underline decoration-line decoration-2 underline-offset-4 hover:decoration-gold">
             Entrar
           </Link>
         </div>
       </nav>
 
-      <section className="relative mx-auto grid max-w-6xl items-center gap-10 px-5 pt-10 sm:pt-16 lg:grid-cols-[1fr_1.1fr]">
-        <div className="relative z-10">
-          <motion.h1
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="font-display text-5xl font-semibold leading-[1.02] tracking-tight sm:text-6xl"
-            style={{ fontVariationSettings: '"SOFT" 100' }}
-          >
-            O amigo secreto da turma, com <em className="text-berry">bonequinho</em> e tudo.
-          </motion.h1>
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.15 }}
-            className="mt-5 max-w-md text-lg leading-relaxed text-muted"
-          >
-            Cada pessoa sobe uma foto e ganha um boneco de gorro. Vocês montam a lista de presentes, o sorteio acontece online e cada um descobre o próprio amigo secreto direto na tela.
-          </motion.p>
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="mt-8 flex flex-wrap items-center gap-4">
+      <section className="mx-auto grid max-w-5xl items-center gap-10 px-5 pt-12 lg:grid-cols-[1fr_1.15fr]">
+        <div>
+          <h1 className="font-display text-4xl font-semibold leading-tight sm:text-5xl">Amigo secreto sem papelzinho.</h1>
+          <p className="mt-4 max-w-md text-lg text-muted">
+            Manda um link no grupo, cada um entra com o nome e uma foto, monta a lista do que quer ganhar e o sorteio sai aqui. Ninguém precisa baixar nada.
+          </p>
+          <div className="mt-7 flex flex-wrap items-center gap-3">
             <Link href="/criar">
-              <Button variant="red" className="px-7 py-3.5 text-lg">
+              <Button variant="red" className="px-6 py-3 text-base">
                 Criar um grupo
               </Button>
             </Link>
             <Link href="/entrar">
-              <Button variant="ghost" className="px-6 py-3.5 text-lg">
+              <Button variant="ghost" className="px-6 py-3 text-base">
                 Já estou num grupo
               </Button>
             </Link>
-            <Link href="/demo" className="text-sm font-semibold text-muted underline-offset-4 hover:text-cream hover:underline">
-              Ver uma demonstração
+          </div>
+          <p className="mt-4 text-sm text-muted">
+            Quer ver antes?{" "}
+            <Link href="/demo" className="text-cream underline underline-offset-4 hover:text-gold">
+              Tem um grupo de teste aqui
             </Link>
-          </motion.div>
+            .
+          </p>
         </div>
 
-        <motion.div
-          initial={{ opacity: 0, scale: 0.96 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.1 }}
-        >
-          <div className="relative h-[400px] overflow-hidden rounded-[22px] border border-line sm:h-[500px]">
+        <div>
+          <div className="relative h-[360px] overflow-hidden rounded-2xl border border-line sm:h-[460px]">
             <Lobby3D people={demo} className="h-full w-full" />
           </div>
-          <p className="mt-2 text-right text-xs text-muted">Arraste para girar. Clique num boneco.</p>
-        </motion.div>
+          <p className="mt-2 text-xs text-muted">Dá para girar com o dedo. Tem também a versão tribunal, com os bonecos de toga.</p>
+        </div>
       </section>
 
-      <section className="relative mx-auto max-w-6xl px-5 py-24">
-        <h2 className="font-display text-3xl font-semibold">Como funciona</h2>
-        <ol className="mt-8 grid gap-x-10 gap-y-8 sm:grid-cols-2 lg:grid-cols-4">
-          {steps.map(([title, text], i) => (
-            <motion.li
-              key={title}
-              initial={{ opacity: 0, y: 14 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.08 }}
-              className="border-t-2 border-line pt-4"
-            >
-              <span className="font-display text-4xl font-semibold text-gold">{i + 1}</span>
-              <h3 className="mt-2 text-lg font-bold">{title}</h3>
-              <p className="mt-1 text-muted">{text}</p>
-            </motion.li>
-          ))}
-        </ol>
-
-        <div className="mt-16 grid gap-8 rounded-[22px] border border-line bg-ink-2 p-8 sm:grid-cols-3">
+      <section className="mx-auto max-w-5xl px-5 py-20">
+        <div className="grid gap-12 lg:grid-cols-[1fr_1.6fr]">
           <div>
-            <h3 className="font-bold">Chat anônimo</h3>
-            <p className="mt-1 text-sm text-muted">Pergunte o tamanho da camisa sem se entregar. A outra pessoa só vê “Papai Noel”.</p>
+            <h2 className="font-display text-2xl font-semibold">Perguntas que sempre aparecem</h2>
+            <p className="mt-2 text-muted">Se a sua não está aqui, pergunta para quem te mandou o link.</p>
           </div>
-          <div>
-            <h3 className="font-bold">Quem não pode tirar quem</h3>
-            <p className="mt-1 text-sm text-muted">Casal, irmãos ou quem já se tirou ano passado: é só marcar antes de sortear.</p>
-          </div>
-          <div>
-            <h3 className="font-bold">Valor combinado</h3>
-            <p className="mt-1 text-sm text-muted">Cada presente da lista mostra se está dentro da faixa de preço do grupo.</p>
+          <div className="divide-y divide-line border-y border-line">
+            {faq.map(([q, a]) => (
+              <details key={q} className="group py-4">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-semibold">
+                  {q}
+                  <span className="text-muted transition group-open:rotate-45">+</span>
+                </summary>
+                <p className="mt-2 text-muted">{a}</p>
+              </details>
+            ))}
           </div>
         </div>
       </section>
 
-      <footer className="border-t border-line py-8 text-center text-sm text-muted">Feliz Natal.</footer>
+      <footer className="mx-auto max-w-5xl border-t border-line px-5 py-6 text-sm text-muted">
+        Feito para o amigo secreto da turma. Sem anúncio e sem cadastro com e-mail.
+      </footer>
     </main>
   );
 }

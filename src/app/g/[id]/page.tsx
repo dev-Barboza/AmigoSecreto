@@ -273,7 +273,7 @@ export default function GroupPage() {
                     </Card>
                     <Card delay={0.08}>
                       <h3 className="font-bold">Conversar com {me.match.name}</h3>
-                      <p className="mb-3 text-sm text-muted">Do outro lado aparece só “Papai Noel”. Pergunte o que precisar.</p>
+                      <p className="mb-3 text-sm text-muted">Do outro lado aparece só “{group.theme === "tribunal" ? "Ministro anônimo" : "Papai Noel"}”. Pergunte o que precisar.</p>
                       <Chat
                         messages={me.chatWithGiftee}
                         me="santa"
@@ -302,7 +302,7 @@ export default function GroupPage() {
                     <Chat
                       messages={me?.chatWithSanta ?? []}
                       me="giftee"
-                      otherLabel="Papai Noel"
+                      otherLabel={group.theme === "tribunal" ? "Ministro anônimo" : "Papai Noel"}
                       placeholder="Uma dica: eu adoro café"
                       onSend={async (text) => {
                         await api(`/api/groups/${gid}/messages`, { gid, body: { to: "santa", text } }).catch((e) => err(e.message));

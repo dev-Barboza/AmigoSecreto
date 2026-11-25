@@ -16,7 +16,11 @@ export function ThemePicker({ value, onChange, compact }: { value: Theme; onChan
             className={`rounded-xl border-2 px-4 py-3 text-left transition ${active ? "border-gold bg-gold/10" : "border-line hover:border-muted"}`}
           >
             <span className="flex items-center gap-2 font-semibold">
-              <span className="text-xl">{t.icon}</span>
+              <span className="flex overflow-hidden rounded">
+                {t.swatch.map((c) => (
+                  <span key={c} className="h-4 w-2.5" style={{ background: c }} />
+                ))}
+              </span>
               <span className={active ? "text-gold" : ""}>{t.label}</span>
             </span>
             {!compact && <span className="mt-1 block text-sm text-muted">{t.desc}</span>}

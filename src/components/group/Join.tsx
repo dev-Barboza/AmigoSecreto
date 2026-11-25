@@ -156,6 +156,7 @@ export function NamePasswordForm({
       <Button type="submit" className="w-full" disabled={!name.trim() || password.length < 4} loading={loading}>
         {submitLabel}
       </Button>
+      <p className="text-center text-sm text-muted">Esqueceu a senha? Quem organiza o grupo consegue criar uma nova para você.</p>
     </form>
   );
 }

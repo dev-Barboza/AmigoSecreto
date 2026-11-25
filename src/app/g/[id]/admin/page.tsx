@@ -246,6 +246,18 @@ function Admin() {
                       {p.wishlist.length} na lista{drawn && (p.revealedAt ? "  ·  já descobriu" : "  ·  ainda não descobriu")}
                     </p>
                   </div>
+                  <button
+                    className="rounded-lg px-2 py-1 text-xs font-semibold text-muted hover:bg-ink-3 hover:text-cream"
+                    onClick={async () => {
+                      const pw = prompt(`Senha nova para ${p.name} (mínimo 4 caracteres):`);
+                      if (pw === null) return;
+                      if (pw.length < 4) return setToast("A senha precisa ter pelo menos 4 caracteres.");
+                      if (await call("/admin/password", "POST", { participantId: p.id, password: pw }))
+                        alert(`Senha trocada. Manda para ${p.name}:\n\nNome: ${p.name}\nSenha: ${pw}`);
+                    }}
+                  >
+                    nova senha
+                  </button>
                   {!drawn && (
                     <button
                       className="px-2 text-lg leading-none text-muted hover:text-berry"
