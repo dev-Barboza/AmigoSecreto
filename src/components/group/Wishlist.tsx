@@ -2,51 +2,37 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
-import { Button, Field } from "@/components/ui";
-import { inBudget, money, siteName } from "@/lib/format";
+import { Button } from "@/components/ui";
+import { siteName } from "@/lib/format";
 import { suggestionsFor } from "@/lib/suggestions";
 import type { PublicGroup, WishItem } from "@/lib/types";
 
-const PRIORITY = { 3: "Quero muito", 2: "Gostaria", 1: "Tanto faz" } as const;
-const PRIORITY_COLOR = { 3: "bg-berry", 2: "bg-gold", 1: "bg-muted" } as const;
+const newId = () => Math.random().toString(36).slice(2, 10);
 
-function BudgetBadge({ price, group }: { price?: number; group: PublicGroup }) {
-  const s = inBudget(price, group.budgetMin, group.budgetMax);
-  if (!s) return null;
-  const map = {
-    ok: ["text-pine", "dentro do valor"],
-    above: ["text-berry", "acima do valor"],
-    below: ["text-sky-400", "abaixo do mínimo"],
-  } as const;
-  return <span className={`text-xs font-semibold ${map[s][0]}`}>{map[s][1]}</span>;
-}
-
-export function WishCard({ item, group, onRemove, index = 0 }: { item: WishItem; group: PublicGroup; onRemove?: () => void; index?: number }) {
+/** Um item da lista: nome, link, ou os dois. */
+export function WishCard({ item, onRemove }: { item: WishItem; onRemove?: () => void }) {
+  const title = item.title || (item.link ? `Lista em ${siteName(item.link)}` : "");
   return (
     <motion.li
       layout
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, x: -40 }}
-      transition={{ type: "spring", stiffness: 320, damping: 28, delay: index * 0.03 }}
-      className="flex items-start gap-3 rounded-xl border border-line bg-ink p-3"
+      className="flex items-center gap-3 rounded-xl border border-line bg-ink px-4 py-3"
     >
-      <span className={`mt-2 h-2.5 w-2.5 shrink-0 rounded-full ${PRIORITY_COLOR[item.priority]}`} title={PRIORITY[item.priority]} />
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <span className="font-semibold">{item.title || (item.link ? `Lista em ${siteName(item.link)}` : "")}</span>
-          {item.price !== undefined && <span className="font-display text-gold">{money(item.price)}</span>}
-          <BudgetBadge price={item.price} group={group} />
-        </div>
-        {item.note && <p className="text-sm text-muted">{item.note}</p>}
-        {item.link && (
-          <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-sm text-gold underline underline-offset-2 hover:text-cream">
-            {item.title ? "ver na loja" : "abrir a lista"}
-          </a>
-        )}
-      </div>
+      <span className="min-w-0 flex-1 truncate font-semibold">{title}</span>
+      {item.link && (
+        <a
+          href={item.link}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="shrink-0 text-sm font-semibold text-gold underline underline-offset-2 hover:text-cream"
+        >
+          {item.title ? "ver link" : "abrir lista"}
+        </a>
+      )}
       {onRemove && (
-        <button onClick={onRemove} className="px-1 text-lg leading-none text-muted hover:text-berry" aria-label="Remover">
+        <button onClick={onRemove} className="shrink-0 px-1 text-lg leading-none text-muted hover:text-berry" aria-label="Remover">
           ×
         </button>
       )}
@@ -55,13 +41,12 @@ export function WishCard({ item, group, onRemove, index = 0 }: { item: WishItem;
 }
 
 export function WishlistEditor({ items, group, onChange }: { items: WishItem[]; group: PublicGroup; onChange: (items: WishItem[]) => Promise<void> }) {
-  const empty = { title: "", price: "", link: "", note: "", priority: 2 as 1 | 2 | 3 };
-  const [f, setF] = useState(empty);
-  const [open, setOpen] = useState(items.length === 0);
+  const [title, setTitle] = useState("");
+  const [link, setLink] = useState("");
   const [showIdeas, setShowIdeas] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [quickLink, setQuickLink] = useState("");
   const ideas = suggestionsFor(group.budgetMin, group.budgetMax);
+  const canAdd = !!(title.trim() || link.trim());
 
   async function save(next: WishItem[]) {
     setSaving(true);
@@ -72,138 +57,79 @@ export function WishlistEditor({ items, group, onChange }: { items: WishItem[]; 
     }
   }
 
-  async function add(e?: React.FormEvent) {
-    e?.preventDefault();
-    if (!f.title.trim() && !f.link.trim()) return;
-    const price = parseFloat(f.price.replace(",", "."));
-    await save([
-      ...items,
-      {
-        id: Math.random().toString(36).slice(2, 10),
-        title: f.title.trim(),
-        price: Number.isFinite(price) ? price : undefined,
-        link: f.link.trim() || undefined,
-        note: f.note.trim() || undefined,
-        priority: f.priority,
-      },
-    ]);
-    setF(empty);
+  async function add(e: React.FormEvent) {
+    e.preventDefault();
+    if (!canAdd) return;
+    await save([...items, { id: newId(), title: title.trim(), link: link.trim() || undefined, priority: 2 }]);
+    setTitle("");
+    setLink("");
   }
 
   return (
     <div className="space-y-4">
-      <ul className="space-y-2">
-        <AnimatePresence initial={false}>
-          {items.map((it, i) => (
-            <WishCard key={it.id} item={it} group={group} index={i} onRemove={() => save(items.filter((x) => x.id !== it.id))} />
-          ))}
-        </AnimatePresence>
-      </ul>
-      {items.length === 0 && <p className="text-sm text-muted">Lista vazia por enquanto.</p>}
-
-      <form
-        className="rounded-xl border border-line bg-ink p-4"
-        onSubmit={async (e) => {
-          e.preventDefault();
-          const link = quickLink.trim();
-          if (!link) return;
-          await save([...items, { id: Math.random().toString(36).slice(2, 10), title: "", link, priority: 3 }]);
-          setQuickLink("");
-        }}
-      >
-        <Field label="Já tem uma lista em outro site?" hint="Amazon, Mercado Livre, Magalu, Shopee... Cola o link e quem te tirar abre direto.">
-          <div className="flex gap-2">
-            <input className="input min-w-0 flex-1" inputMode="url" placeholder="https://..." value={quickLink} onChange={(e) => setQuickLink(e.target.value)} />
-            <Button type="submit" variant="gold" disabled={!quickLink.trim()} loading={saving}>
-              Adicionar
-            </Button>
-          </div>
-        </Field>
+      <form onSubmit={add} className="space-y-3 rounded-xl border border-line bg-ink p-4">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="block space-y-1.5">
+            <span className="text-sm font-semibold text-cream/90">Presente</span>
+            <input className="input" placeholder="Ex.: fone bluetooth" value={title} onChange={(e) => setTitle(e.target.value)} />
+          </label>
+          <label className="block space-y-1.5">
+            <span className="text-sm font-semibold text-cream/90">Link</span>
+            <input className="input" inputMode="url" placeholder="Amazon, Mercado Livre, Shopee..." value={link} onChange={(e) => setLink(e.target.value)} />
+          </label>
+        </div>
+        <p className="text-xs text-muted">Preencha um dos dois ou os dois. Se já tem uma lista pronta em outro site, cola só o link dela.</p>
+        <Button type="submit" variant="gold" className="w-full sm:w-auto" disabled={!canAdd} loading={saving}>
+          Adicionar
+        </Button>
       </form>
 
-      <div className="flex flex-wrap gap-2">
-        <Button variant={open ? "ghost" : "red"} onClick={() => setOpen(!open)}>
-          {open ? "Fechar" : "Adicionar presente"}
-        </Button>
-        <Button variant="ghost" onClick={() => setShowIdeas(!showIdeas)}>
-          {showIdeas ? "Esconder ideias" : "Ver ideias"}
-        </Button>
+      {items.length > 0 ? (
+        <ul className="space-y-2">
+          <AnimatePresence initial={false}>
+            {items.map((it) => (
+              <WishCard key={it.id} item={it} onRemove={() => save(items.filter((x) => x.id !== it.id))} />
+            ))}
+          </AnimatePresence>
+        </ul>
+      ) : (
+        <p className="text-sm text-muted">Lista vazia por enquanto.</p>
+      )}
+
+      <div>
+        <button onClick={() => setShowIdeas(!showIdeas)} className="text-sm font-semibold text-muted underline-offset-4 hover:text-cream hover:underline">
+          {showIdeas ? "Esconder ideias" : "Sem ideia? Ver sugestões"}
+        </button>
+        <AnimatePresence>
+          {showIdeas && (
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+              <div className="flex flex-wrap gap-2 pt-3">
+                {ideas.map((s) => (
+                  <button
+                    key={s.title}
+                    disabled={saving || items.some((x) => x.title === s.title)}
+                    onClick={() => save([...items, { id: newId(), title: s.title, priority: 2 }])}
+                    className="rounded-full border border-line px-3 py-1.5 text-sm transition hover:border-gold disabled:opacity-30"
+                  >
+                    {s.title}
+                  </button>
+                ))}
+                {ideas.length === 0 && <span className="text-sm text-muted">Nenhuma sugestão nessa faixa de valor.</span>}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
-
-      <AnimatePresence>
-        {showIdeas && (
-          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-            <p className="mb-2 text-sm text-muted">Ideias dentro do valor do grupo (preço aproximado). Toque para adicionar.</p>
-            <div className="flex flex-wrap gap-2">
-              {ideas.map((s) => (
-                <button
-                  key={s.title}
-                  disabled={saving || items.some((x) => x.title === s.title)}
-                  onClick={() => save([...items, { id: Math.random().toString(36).slice(2, 10), title: s.title, price: s.price, priority: 2 }])}
-                  className="rounded-full border border-line px-3 py-1.5 text-sm transition hover:border-gold disabled:opacity-30"
-                >
-                  {s.title} <span className="text-muted">{money(s.price)}</span>
-                </button>
-              ))}
-              {ideas.length === 0 && <span className="text-sm text-muted">Nenhuma ideia nessa faixa de preço.</span>}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {open && (
-          <motion.form
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            onSubmit={add}
-            className="space-y-3 overflow-hidden rounded-xl border border-line bg-ink p-4"
-          >
-            <Field label="O que você quer ganhar?" hint="Se preferir, deixa em branco e coloca só o link.">
-              <input className="input" placeholder="Fone bluetooth" value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} />
-            </Field>
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Preço (R$)">
-                <input className="input" inputMode="decimal" placeholder="0,00" value={f.price} onChange={(e) => setF({ ...f, price: e.target.value })} />
-              </Field>
-              <Field label="Link">
-                <input className="input" placeholder="opcional" value={f.link} onChange={(e) => setF({ ...f, link: e.target.value })} />
-              </Field>
-            </div>
-            <Field label="Detalhes">
-              <input className="input" placeholder="Cor, tamanho, modelo" value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} />
-            </Field>
-            <div className="flex flex-wrap gap-2">
-              {([3, 2, 1] as const).map((p) => (
-                <button
-                  type="button"
-                  key={p}
-                  onClick={() => setF({ ...f, priority: p })}
-                  className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition ${f.priority === p ? "border-cream bg-cream text-ink" : "border-line hover:border-muted"}`}
-                >
-                  <span className={`h-2 w-2 rounded-full ${PRIORITY_COLOR[p]}`} />
-                  {PRIORITY[p]}
-                </button>
-              ))}
-            </div>
-            <Button type="submit" variant="gold" className="w-full" disabled={!f.title.trim() && !f.link.trim()} loading={saving}>
-              Adicionar
-            </Button>
-          </motion.form>
-        )}
-      </AnimatePresence>
     </div>
   );
 }
 
-export function WishlistView({ items, group }: { items: WishItem[]; group: PublicGroup }) {
+export function WishlistView({ items }: { items: WishItem[]; group?: PublicGroup }) {
   if (!items.length) return <p className="text-sm text-muted">Ainda não colocou nada na lista.</p>;
-  const sorted = [...items].sort((a, b) => b.priority - a.priority);
   return (
     <ul className="space-y-2">
-      {sorted.map((it, i) => (
-        <WishCard key={it.id} item={it} group={group} index={i} />
+      {items.map((it) => (
+        <WishCard key={it.id} item={it} />
       ))}
     </ul>
   );
