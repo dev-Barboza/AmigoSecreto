@@ -3,7 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useRef, useState } from "react";
 import { boom, Button, Card, Field, Preview3D } from "@/components/ui";
-import { api, resizePhoto, session } from "@/lib/client";
+import { api, matchStore, resizePhoto, session, type MatchRef } from "@/lib/client";
 import { BODY_COLORS } from "@/lib/format";
 import type { Theme } from "@/lib/theme";
 import type { PublicParticipant } from "@/lib/types";
@@ -257,8 +257,9 @@ export function LoginFlow({ gid, onJoined, onError }: { gid: string; people?: Pu
       <NamePasswordForm
         onSubmit={async (name, password) => {
           try {
-            const s = await api<{ participantId: string; token: string }>(`/api/groups/${gid}/login`, { body: { name, password } });
-            session.set(gid, s);
+            const s = await api<{ participantId: string; token: string; match?: MatchRef }>(`/api/groups/${gid}/login`, { body: { name, password } });
+            session.set(gid, { participantId: s.participantId, token: s.token });
+            matchStore.set(gid, s.match);
             onJoined();
           } catch (err) {
             onError((err as Error).message);

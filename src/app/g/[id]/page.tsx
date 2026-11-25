@@ -4,10 +4,10 @@ import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ColorPicker, JoinFlow, LoginFlow, PhotoPicker } from "@/components/group/Join";
+import { ColorPicker, JoinFlow, LoginFlow, PasswordInput, PhotoPicker } from "@/components/group/Join";
 import { WishlistEditor, WishlistView } from "@/components/group/Wishlist";
 import { Avatar, boom, Button, Card, Countdown, Field, Hat, Lobby3D, Logo, Reveal3D, SnowCSS, Tabs, Toast } from "@/components/ui";
-import { adminKey, api, recentGroups, session, usePolling } from "@/lib/client";
+import { adminKey, api, matchStore, recentGroups, session, usePolling, type MatchRef } from "@/lib/client";
 import { budgetLabel, dateLabel } from "@/lib/format";
 import type { MeResponse, PublicGroup, PublicParticipant } from "@/lib/types";
 
@@ -28,6 +28,8 @@ export default function GroupPage() {
   const [selected, setSelected] = useState<PublicParticipant | null>(null);
   const [reveal, setReveal] = useState<{ taps: number; opened: boolean; done: boolean } | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [matchId, setMatchId] = useState<string | null>(null);
+  const [askPassword, setAskPassword] = useState(false);
   const revs = useRef({ rev: -1 });
 
   /** Pergunta ao servidor se algo mudou; só baixa o grupo (com as fotos) e o "meu" quando precisa. */
@@ -66,7 +68,12 @@ export default function GroupPage() {
     if (groupName) recentGroups.add(gid, groupName);
   }, [gid, groupName]);
 
-  const hasMatch = !!me?.match;
+  const drawnAt = data?.group.drawnAt;
+  const myId = me?.me.id;
+  useEffect(() => setMatchId(matchStore.get(gid, drawnAt)), [gid, drawnAt, myId]);
+  const match = matchId ? data?.participants.find((p) => p.id === matchId) : undefined;
+
+  const hasMatch = !!match;
   useEffect(() => {
     if (hasMatch) setTab((t) => (t === "list" ? "match" : t));
   }, [hasMatch]);
@@ -84,11 +91,16 @@ export default function GroupPage() {
     }
   }
 
-  async function startReveal() {
+  /** Abre o resultado com a senha. Com animation=true, mostra a caixa para tocar. */
+  async function unlock(password: string, animation: boolean) {
     try {
-      await api(`/api/groups/${gid}/me`, { gid, method: "PUT", body: { reveal: true } });
-      setMe(await api<MeResponse>(`/api/groups/${gid}/me`, { gid }));
-      setReveal({ taps: 0, opened: false, done: false });
+      const r = await api<{ match: MatchRef }>(`/api/groups/${gid}/reveal`, { gid, body: { password } });
+      matchStore.set(gid, r.match);
+      setMatchId(r.match.id);
+      setAskPassword(false);
+      if (animation) setReveal({ taps: 0, opened: false, done: false });
+      else setTab("match");
+      reload();
     } catch (e) {
       err((e as Error).message);
     }
@@ -230,14 +242,14 @@ export default function GroupPage() {
             {drawn && !revealed && (
               <div className="py-2 text-center">
                 <motion.button
-                  onClick={startReveal}
+                  onClick={() => setAskPassword(true)}
                   animate={{ y: [0, -4, 0] }}
                   transition={{ repeat: Infinity, duration: 1.4 }}
                   className="btn btn-gold px-8 py-5 font-display text-2xl"
                 >
                   Descobrir meu amigo secreto
                 </motion.button>
-                <p className="mt-3 text-sm text-muted">Veja quem você tirou.</p>
+                <p className="mt-3 text-sm text-muted">O resultado fica trancado com a sua senha. Nem quem organiza consegue ver.</p>
               </div>
             )}
             {!drawn && (
@@ -254,19 +266,28 @@ export default function GroupPage() {
 
             <AnimatePresence mode="wait">
               <motion.div key={tab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}>
-                {tab === "match" && me?.match && (
+                {tab === "match" && match && (
                   <div className="mx-auto max-w-2xl">
                     <Card>
                       <div className="mb-4 flex items-center gap-4">
-                        <Avatar photo={me.match.photo} name={me.match.name} color={me.match.color} size={68} />
+                        <Avatar photo={match.photo} name={match.name} color={match.color} size={68} />
                         <div>
                           <p className="text-sm text-muted">Você tirou</p>
-                          <h2 className="font-display text-3xl font-semibold">{me.match.name}</h2>
+                          <h2 className="font-display text-3xl font-semibold">{match.name}</h2>
                         </div>
                       </div>
-                      <ProfileExtras p={me.match} />
+                      <ProfileExtras p={match} />
                       <h3 className="mb-2 mt-5 font-bold">Lista de presentes</h3>
-                      <WishlistView items={me.match.wishlist} group={group} />
+                      <WishlistView items={match.wishlist} group={group} />
+                    </Card>
+                  </div>
+                )}
+                {tab === "match" && !match && (
+                  <div className="mx-auto max-w-md">
+                    <Card>
+                      <h2 className="font-display text-2xl font-semibold">Ver quem eu tirei</h2>
+                      <p className="mb-4 mt-1 text-sm text-muted">Seu resultado fica trancado com a sua senha. Digite para abrir neste aparelho.</p>
+                      <PasswordForm submitLabel="Abrir" onSubmit={(pw) => unlock(pw, false)} />
                     </Card>
                   </div>
                 )}
@@ -286,6 +307,8 @@ export default function GroupPage() {
                 className="text-xs text-muted underline-offset-2 hover:underline"
                 onClick={() => {
                   session.clear(gid);
+                  matchStore.clear(gid);
+                  setMatchId(null);
                   setMe(null);
                 }}
               >
@@ -337,9 +360,9 @@ export default function GroupPage() {
 
       {/* revelação */}
       <AnimatePresence>
-        {reveal && me?.match && (
+        {reveal && match && (
           <motion.div className="fixed inset-0 z-50 bg-ink" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <Reveal3D person={me.match} taps={reveal.taps} opened={reveal.opened} onTap={tapGift} className="absolute inset-0" theme={group.theme} />
+            <Reveal3D person={match} taps={reveal.taps} opened={reveal.opened} onTap={tapGift} className="absolute inset-0" theme={group.theme} />
             <div className="pointer-events-none absolute inset-x-0 top-10 px-4 text-center">
               <AnimatePresence mode="wait">
                 {!reveal.opened ? (
@@ -356,7 +379,7 @@ export default function GroupPage() {
                   reveal.done && (
                     <motion.div initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ type: "spring" }}>
                       <p className="text-lg text-muted">Você tirou</p>
-                      <p className="font-display text-6xl font-semibold text-gold sm:text-7xl">{me.match.name}</p>
+                      <p className="font-display text-6xl font-semibold text-gold sm:text-7xl">{match.name}</p>
                     </motion.div>
                   )
                 )}
@@ -376,6 +399,25 @@ export default function GroupPage() {
                 </Button>
               </motion.div>
             )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* senha antes de descobrir */}
+      <AnimatePresence>
+        {askPassword && (
+          <motion.div
+            className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setAskPassword(false)}
+          >
+            <motion.div initial={{ y: 30 }} animate={{ y: 0 }} onClick={(e) => e.stopPropagation()} className="panel w-full max-w-sm p-6">
+              <h2 className="font-display text-2xl font-semibold">Digite sua senha</h2>
+              <p className="mb-4 mt-1 text-sm text-muted">Seu resultado está trancado com ela. Só você consegue abrir.</p>
+              <PasswordForm submitLabel="Abrir" onSubmit={(pw) => unlock(pw, true)} />
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -444,5 +486,26 @@ function CharacterEditor({ me, onSave }: { me: PublicParticipant; onSave: (b: Re
         </Button>
       </div>
     </Card>
+  );
+}
+
+function PasswordForm({ onSubmit, submitLabel }: { onSubmit: (password: string) => Promise<void>; submitLabel: string }) {
+  const [pw, setPw] = useState("");
+  const [loading, setLoading] = useState(false);
+  return (
+    <form
+      className="space-y-3"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        await onSubmit(pw);
+        setLoading(false);
+      }}
+    >
+      <PasswordInput value={pw} onChange={setPw} autoFocus />
+      <Button type="submit" variant="gold" className="w-full" disabled={pw.length < 4} loading={loading}>
+        {submitLabel}
+      </Button>
+    </form>
   );
 }

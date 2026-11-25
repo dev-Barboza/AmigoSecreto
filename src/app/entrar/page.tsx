@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { NamePasswordForm } from "@/components/group/Join";
 import { Button, Card, Field, Logo, SnowCSS, Toast } from "@/components/ui";
-import { adminKey, api, groupIdFrom, recentGroups, session, type RecentGroup } from "@/lib/client";
+import { adminKey, api, groupIdFrom, matchStore, recentGroups, session, type MatchRef, type RecentGroup } from "@/lib/client";
 
-type Match = { gid: string; groupName: string; participantId: string; token: string };
+type Match = { gid: string; groupName: string; participantId: string; token: string; match?: MatchRef };
 
 /** Entrar só com nome + senha: o servidor descobre em qual grupo a pessoa está. */
 export default function Entrar() {
@@ -26,6 +26,7 @@ export default function Entrar() {
       for (const m of matches) {
         session.set(m.gid, { participantId: m.participantId, token: m.token });
         recentGroups.add(m.gid, m.groupName);
+        matchStore.set(m.gid, m.match);
       }
       if (matches.length === 1) router.push(`/g/${matches[0].gid}`);
       else setChoices(matches);

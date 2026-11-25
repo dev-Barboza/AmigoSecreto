@@ -2,6 +2,7 @@ import { createHash, randomBytes, scryptSync, timingSafeEqual } from "crypto";
 import { customAlphabet, nanoid } from "nanoid";
 import { NextResponse } from "next/server";
 import { kv } from "./kv";
+import { makeKeys, openWith, sealFor } from "./seal";
 import type { GroupMeta, Participant, PublicGroup, PublicParticipant, WishItem } from "./types";
 
 export const groupId = customAlphabet("23456789abcdefghjkmnpqrstuvwxyz", 8);
@@ -134,7 +135,7 @@ export async function rateLimit(gid: string, what: string, max: number, ttl = 60
 }
 
 // ---------- leitura ----------
-export const toPublic = ({ pinHash: _p, token: _t, ...rest }: Participant): PublicParticipant => rest;
+export const toPublic = ({ pinHash: _p, token: _t, pubKey: _k, encPriv: _e, ...rest }: Participant): PublicParticipant => rest;
 export const groupPublic = ({ adminKey: _a, ...rest }: GroupMeta): PublicGroup => rest;
 
 export async function getMeta(gid: string) {
@@ -198,3 +199,26 @@ export async function requireAdmin(req: Request, gid: string) {
 }
 
 export const newToken = () => nanoid(32);
+
+// ---------- sorteio trancado ----------
+/** Garante que a pessoa tem chaves (quem entrou antes disso ganha ao fazer login). */
+export async function ensureKeys(gid: string, p: Participant, password: string) {
+  if (p.pubKey && p.encPriv) return p;
+  Object.assign(p, makeKeys(p.id, password));
+  await savePerson(gid, p);
+  return p;
+}
+
+/** Tranca cada par com a chave de quem tirou. A lista aberta não é salva. */
+export function sealPairs(people: Participant[], pairs: Record<string, string>) {
+  const byId = new Map(people.map((p) => [p.id, p]));
+  return Object.fromEntries(
+    Object.entries(pairs).map(([santa, giftee]) => [santa, sealFor(byId.get(santa)!.pubKey!, giftee)]),
+  );
+}
+
+/** Abre "quem eu tirei" com a senha. null = sem sorteio, ou a senha não abre (trocada depois do sorteio). */
+export async function openMatch(gid: string, p: Participant, password: string) {
+  const sealed = (await getPairs(gid))[p.id];
+  return sealed ? openWith(p, password, sealed) : null;
+}

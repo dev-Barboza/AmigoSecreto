@@ -23,9 +23,12 @@ export type Participant = {
   revealedAt?: number;
   pinHash: string;
   token: string;
+  /** chave pública (PEM) e chave privada cifrada com a senha: ver lib/seal.ts */
+  pubKey?: string;
+  encPriv?: string;
 };
 
-export type PublicParticipant = Omit<Participant, "pinHash" | "token">;
+export type PublicParticipant = Omit<Participant, "pinHash" | "token" | "pubKey" | "encPriv">;
 
 export type GroupMeta = {
   id: string;
@@ -49,5 +52,4 @@ export type PublicGroup = Omit<GroupMeta, "adminKey">;
 export type MeResponse = {
   me: PublicParticipant;
   group: PublicGroup;
-  match?: PublicParticipant;
 };

@@ -252,7 +252,8 @@ function Admin() {
                       const pw = prompt(`Senha nova para ${p.name} (mínimo 4 caracteres):`);
                       if (pw === null) return;
                       if (pw.length < 4) return setToast("A senha precisa ter pelo menos 4 caracteres.");
-                      if (await call("/admin/password", "POST", { participantId: p.id, password: pw }))
+                      if (drawn && !confirm(`O sorteio já foi feito e o resultado de ${p.name} está trancado com a senha antiga. Com senha nova, ${p.name} não consegue mais abrir e você vai ter que refazer o sorteio. Trocar mesmo assim?`)) return;
+                      if (await call("/admin/password", "POST", { participantId: p.id, password: pw, force: drawn }))
                         alert(`Senha trocada. Manda para ${p.name}:\n\nNome: ${p.name}\nSenha: ${pw}`);
                     }}
                   >

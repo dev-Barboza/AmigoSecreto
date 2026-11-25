@@ -10,9 +10,9 @@ const demo: PublicParticipant[] = [
 ].map(([name, color], i) => ({ id: String(i), name, color, emoji: "", wishlist: [], joinedAt: i }));
 
 const faq: [string, string][] = [
-  ["Quem organiza consegue ver quem tirou quem?", "Não. O sorteio fica guardado no servidor e cada pessoa só vê o próprio resultado. Nem quem apertou o botão sabe."],
+  ["Quem organiza consegue ver quem tirou quem?", "Não. O resultado de cada pessoa é criptografado com a senha dela, e a lista aberta de quem tirou quem não fica salva em lugar nenhum. Nem quem organiza, nem quem tem acesso ao banco de dados consegue ler."],
   ["Precisa baixar alguma coisa?", "Não. É um link: abre no navegador do celular, a pessoa coloca o nome, uma foto se quiser, e uma senha."],
-  ["E se alguém esquecer a senha?", "Quem organiza cria uma senha nova pela página de organizador. O resto do grupo não é afetado."],
+  ["E se alguém esquecer a senha?", "Quem organiza cria uma senha nova pela página de organizador. Antes do sorteio, é só isso. Depois do sorteio, o resultado dessa pessoa estava trancado com a senha antiga, então é preciso refazer o sorteio."],
   ["Dá para impedir que casal se tire?", "Dá. Antes do sorteio, quem organiza marca os pares que não podem sair."],
   ["Já tenho uma lista na Amazon. Preciso refazer?", "Não. Na sua lista, cola o link da lista que você já tem e pronto. Quem te tirar abre direto."],
 ];

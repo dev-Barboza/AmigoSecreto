@@ -1,5 +1,5 @@
 import {
-  cleanWishlist, color, getMeta, getPairs, getPerson, groupPublic, handle, HttpError,
+  cleanWishlist, color, getMeta, groupPublic, handle,
   photo, requireParticipant, savePerson, str, toPublic,
 } from "@/lib/db";
 import type { MeResponse } from "@/lib/types";
@@ -10,16 +10,8 @@ export const GET = handle(async (req: Request, { params }: Ctx): Promise<MeRespo
   const { id } = await params;
   const me = await requireParticipant(req, id);
   const meta = await getMeta(id);
-  const res: MeResponse = { me: toPublic(me), group: groupPublic(meta) };
-  if (meta.drawnAt) {
-    const pairs = await getPairs(id);
-    const gifteeId = pairs[me.id];
-    if (gifteeId && me.revealedAt) {
-      const giftee = await getPerson(id, gifteeId);
-      if (giftee) res.match = toPublic(giftee);
-    }
-  }
-  return res;
+  // o par não sai daqui: só /reveal (com a senha) consegue abrir
+  return { me: toPublic(me), group: groupPublic(meta) };
 });
 
 export const PUT = handle(async (req: Request, { params }: Ctx) => {
@@ -33,11 +25,6 @@ export const PUT = handle(async (req: Request, { params }: Ctx) => {
   if ("likes" in b) me.likes = str(b.likes, 400) || undefined;
   if ("dislikes" in b) me.dislikes = str(b.dislikes, 400) || undefined;
   if ("sizes" in b) me.sizes = str(b.sizes, 200) || undefined;
-  if (b.reveal) {
-    const meta = await getMeta(id);
-    if (!meta.drawnAt) throw new HttpError(409, "O sorteio ainda não aconteceu");
-    me.revealedAt ??= Date.now();
-  }
   await savePerson(id, me);
   return { me: toPublic(me) };
 });

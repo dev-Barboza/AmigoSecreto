@@ -1,4 +1,4 @@
-import { checkPassword, findByName, getMeta, getPerson, handle, HttpError, normName, rateLimit, str } from "@/lib/db";
+import { checkPassword, ensureKeys, findByName, getMeta, getPerson, handle, HttpError, normName, openMatch, rateLimit, str } from "@/lib/db";
 
 /**
  * Entrar pela página inicial só com nome + senha: procura em todos os grupos
@@ -17,7 +17,12 @@ export const POST = handle(async (req: Request) => {
     if (!p || !checkPassword(gid, password, p.pinHash)) continue;
     const meta = await getMeta(gid).catch(() => null);
     if (!meta) continue;
-    matches.push({ gid, groupName: meta.name, participantId: p.id, token: p.token });
+    await ensureKeys(gid, p, password);
+    const matchId = meta.drawnAt && p.revealedAt ? await openMatch(gid, p, password) : null;
+    matches.push({
+      gid, groupName: meta.name, participantId: p.id, token: p.token,
+      match: matchId ? { id: matchId, drawnAt: meta.drawnAt } : undefined,
+    });
   }
   if (!matches.length) throw new HttpError(401, "Nome ou senha incorretos");
   return { matches };

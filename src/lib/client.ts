@@ -20,6 +20,26 @@ export const session = {
   clear: (gid: string) => localStorage.removeItem(sKey(gid)),
 };
 
+/**
+ * Quem a pessoa tirou, guardado só neste aparelho depois de abrir com a senha.
+ * Vale só para o sorteio atual (se o sorteio for refeito, drawnAt muda e isso é ignorado).
+ */
+export type MatchRef = { id: string; drawnAt?: number };
+const mKey = (gid: string) => `as:match:${gid}`;
+export const matchStore = {
+  get(gid: string, drawnAt?: number): string | null {
+    if (typeof window === "undefined" || !drawnAt) return null;
+    try {
+      const v = JSON.parse(localStorage.getItem(mKey(gid)) ?? "null") as MatchRef | null;
+      return v && v.drawnAt === drawnAt ? v.id : null;
+    } catch {
+      return null;
+    }
+  },
+  set: (gid: string, m?: MatchRef) => m && localStorage.setItem(mKey(gid), JSON.stringify(m)),
+  clear: (gid: string) => localStorage.removeItem(mKey(gid)),
+};
+
 export const adminKey = {
   get: (gid: string) => (typeof window === "undefined" ? null : localStorage.getItem(aKey(gid))),
   set: (gid: string, k: string) => localStorage.setItem(aKey(gid), k),
