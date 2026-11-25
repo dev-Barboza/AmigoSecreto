@@ -29,7 +29,20 @@ export type CharacterProps = {
   outfit?: Outfit;
   /** onde pendurar a etiqueta do nome (sem isso, o primeiro boneco podia ficar sem nome) */
   labelTarget?: React.RefObject<HTMLElement | null>;
+  /** permite pegar o boneco e soltar em outro lugar do chão (só na tela de quem arrastou) */
+  drag?: DragOptions;
 };
+
+export type DragOptions = {
+  /** distância mínima e máxima do centro onde dá para soltar */
+  minR: number;
+  maxR: number;
+  onStart: () => void;
+  onEnd: () => void;
+};
+
+const FLOOR = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+const hit = new THREE.Vector3();
 
 const SKIN = "#ffdcc2";
 const TOGA = "#151515";
@@ -112,7 +125,7 @@ function useFaceTexture(photo: string | undefined, color: string) {
 
 export function Character({
   name, photo, color, position, angle = 0, radius = 0, spin, mode = "idle", drop = false,
-  scale = 1, showLabel = true, highlight = false, onSelect, outfit = "noel", labelTarget,
+  scale = 1, showLabel = true, highlight = false, onSelect, outfit = "noel", labelTarget, drag,
 }: CharacterProps) {
   const judge = outfit === "ministro";
   const root = useRef<THREE.Group>(null);
@@ -127,6 +140,11 @@ export function Character({
   const curScale = useRef(scale);
   const face = useFaceTexture(photo, color);
   const shirt = useMemo(() => new THREE.Color(color), [color]);
+  const placed = useRef<THREE.Vector3 | null>(null); // onde foi solto
+  const dragging = useRef(false);
+  const downAt = useRef<{ x: number; y: number } | null>(null);
+  const suppressClick = useRef(false);
+  const landAt = useRef(-99);
 
   useFrame(({ clock, camera }) => {
     const t = clock.elapsedTime;
@@ -135,8 +153,16 @@ export function Character({
     if (!g || !b) return;
 
     // posição no círculo ou fixa
+    if (mode === "run" && placed.current && !dragging.current) placed.current = null; // no sorteio, volta pra roda
+
     if (position) {
       g.position.set(position[0], position[1], position[2]);
+    } else if (placed.current) {
+      g.position.lerp(placed.current, dragging.current ? 0.35 : 0.2);
+      const yaw = Math.atan2(camera.position.x - g.position.x, camera.position.z - g.position.z);
+      let d = yaw - g.rotation.y;
+      d = Math.atan2(Math.sin(d), Math.cos(d));
+      g.rotation.y += d * 0.08;
     } else {
       const a = angle + (spin?.current ?? 0);
       g.position.set(Math.sin(a) * radius, 0, Math.cos(a) * radius);
@@ -195,6 +221,17 @@ export function Character({
       armA = armB = 2.8;
     }
 
+    // pendurado enquanto é arrastado: sobe, balança e levanta os braços
+    if (dragging.current) {
+      y = 0.7 + Math.sin(t * 7) * 0.05;
+      armA = armB = 2.7 + Math.sin(t * 9) * 0.15;
+      armX = 0;
+    }
+    b.rotation.z = dragging.current ? Math.sin(t * 6) * 0.18 : 0;
+    // amassadinha ao cair no chão
+    const l = t - landAt.current;
+    if (l < 0.45) squash *= 1 - Math.sin((l / 0.45) * Math.PI) * 0.22;
+
     b.position.y = y;
     b.rotation.y = rotY;
     const target = (hover || highlight ? 1.12 : 1) * scale;
@@ -211,14 +248,49 @@ export function Character({
         onPointerOver={(e) => {
           e.stopPropagation();
           setHover(true);
-          document.body.style.cursor = "pointer";
+          if (!dragging.current) document.body.style.cursor = drag ? "grab" : "pointer";
         }}
         onPointerOut={() => {
           setHover(false);
-          document.body.style.cursor = "";
+          if (!dragging.current) document.body.style.cursor = "";
+        }}
+        onPointerDown={(e) => {
+          if (!drag) return;
+          e.stopPropagation();
+          (e.target as Element).setPointerCapture(e.pointerId);
+          downAt.current = { x: e.clientX, y: e.clientY };
+          drag.onStart(); // trava a câmera para o arraste não girar a cena
+        }}
+        onPointerMove={(e) => {
+          if (!drag || !downAt.current) return;
+          if (!dragging.current) {
+            if (Math.hypot(e.clientX - downAt.current.x, e.clientY - downAt.current.y) < 6) return;
+            dragging.current = true;
+            document.body.style.cursor = "grabbing";
+          }
+          if (!e.ray.intersectPlane(FLOOR, hit)) return;
+          const r = Math.hypot(hit.x, hit.z) || 0.001;
+          const k = THREE.MathUtils.clamp(r, drag.minR, drag.maxR) / r;
+          (placed.current ??= new THREE.Vector3()).set(hit.x * k, 0, hit.z * k);
+        }}
+        onPointerUp={(e) => {
+          if (!drag || !downAt.current) return;
+          (e.target as Element).releasePointerCapture?.(e.pointerId);
+          downAt.current = null;
+          if (dragging.current) {
+            dragging.current = false;
+            suppressClick.current = true;
+            landAt.current = clock.elapsedTime;
+            document.body.style.cursor = hover ? "grab" : "";
+          }
+          drag.onEnd();
         }}
         onClick={(e) => {
           e.stopPropagation();
+          if (suppressClick.current) {
+            suppressClick.current = false; // foi um arraste, não um clique
+            return;
+          }
           jumpAt.current = clock.elapsedTime;
           onSelect?.();
         }}

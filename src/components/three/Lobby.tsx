@@ -5,7 +5,8 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { useRef } from "react";
 import type { Theme } from "@/lib/theme";
 import type { PublicParticipant } from "@/lib/types";
-import { Character, type CharMode } from "./Character";
+import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
+import { Character, type CharMode, type DragOptions } from "./Character";
 import { Bench, Columns, CourtFloor, CourtSky, Flag, Papers, Scales } from "./Court";
 import { ChristmasTree, Ground, Lights, Sky, Snow } from "./World";
 
@@ -36,9 +37,16 @@ export default function Lobby({ people, mode = "idle", highlightId, onSelect, cl
   const court = theme === "tribunal";
   const spin = useRef(0);
   const wrap = useRef<HTMLDivElement>(null);
+  const controls = useRef<OrbitControlsImpl>(null);
   const n = Math.max(people.length, 1);
   const radius = Math.max(2.4, n * 0.42);
   const dist = radius * 1.9 + 5;
+  const drag: DragOptions = {
+    minR: 1.4,
+    maxR: court ? radius + 1.6 : radius + 2.8, // no tribunal, não deixa entrar na bancada
+    onStart: () => controls.current && (controls.current.enabled = false),
+    onEnd: () => controls.current && (controls.current.enabled = true),
+  };
   const charMode: CharMode = mode === "shuffle" ? "run" : mode === "party" ? "dance" : "idle";
 
   return (
@@ -80,9 +88,11 @@ export default function Lobby({ people, mode = "idle", highlightId, onSelect, cl
             onSelect={() => onSelect?.(p)}
             outfit={court ? "ministro" : "noel"}
             labelTarget={wrap}
+            drag={drag}
           />
         ))}
         <OrbitControls
+          ref={controls}
           enablePan={false}
           minDistance={4}
           maxDistance={dist * 1.6}
