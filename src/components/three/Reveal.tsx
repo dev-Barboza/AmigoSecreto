@@ -7,7 +7,7 @@ import * as THREE from "three";
 import type { Theme } from "@/lib/theme";
 import type { PublicParticipant } from "@/lib/types";
 import { Character } from "./Character";
-import { CourtFloor, CourtSky, Papers, Plaque } from "./Court";
+import { CourtFloor, CourtSky, Papers } from "./Court";
 import { Lights, Sky, Snow } from "./World";
 
 type Props = {
@@ -173,7 +173,6 @@ export default function Reveal({ person, taps, opened, onTap, className, theme =
             <CourtSky />
             <Lights />
             <CourtFloor radius={6} />
-            <Plaque position={[0, 5.2, -5]} width={5.5} />
             <Papers count={50} area={12} />
           </>
         ) : (
